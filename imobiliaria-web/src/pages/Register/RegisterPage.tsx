@@ -1,29 +1,28 @@
-import { useState } from "react";
-import type { FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Card from "../../components/ui/Card";
 import "./register.css";
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
-
 type Role = "ADMIN" | "ATENDENTE";
 
 export default function RegisterPage() {
   const nav = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
   const [form, setForm] = useState({
     nome: "",
     email: "",
+    role: "ATENDENTE" as Role,
     password: "",
     confirm: "",
-    role: "ATENDENTE" as Role,
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
 
+    if (!form.nome.trim()) return setError("Informe seu nome.");
     if (form.password.length < 6) return setError("Senha deve ter ao menos 6 caracteres.");
     if (form.password !== form.confirm) return setError("As senhas não conferem.");
 
@@ -41,13 +40,13 @@ export default function RegisterPage() {
       });
 
       if (!res.ok) {
-        const msg = res.status === 400 ? "E-mail já cadastrado." : "Erro ao cadastrar.";
-        throw new Error(msg);
+        if (res.status === 400) throw new Error("E-mail já cadastrado.");
+        throw new Error("Erro ao cadastrar.");
       }
 
-      // Resposta: { id, nome, email, role }
+      // Esperado: { id, nome, email, role }
       const user = await res.json();
-      localStorage.setItem("auth:user", JSON.stringify(user)); // guarda sessão simples
+      localStorage.setItem("auth:user", JSON.stringify(user));
       nav("/dashboard");
     } catch (err: any) {
       setError(err.message || "Falha ao cadastrar.");
@@ -57,87 +56,129 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <Card>
-        <h1 className="text-xl font-semibold mb-2">Criar conta</h1>
-        <p className="text-sm text-slate-600 mb-6">Preencha os dados para acessar o painel.</p>
+    <div className="register-root">
+      {/* HEADER (igual da Login) */}
+      <header className="site-header">
+        <div className="header-inner">
+          <a href="/" className="brand" aria-label="Página inicial">
+            <span className="brand-logo">
+              <svg viewBox="0 0 24 24" className="icon">
+                <path
+                  d="M3 9.75L12 3l9 6.75M4.5 10.5V21a.75.75 0 00.75.75H9.75V15a2.25 2.25 0 012.25-2.25h0A2.25 2.25 0 0114.25 15v6.75H18.75A.75.75 0 0019.5 21V10.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <div className="brand-text">
+              <span className="brand-sub">Sistema Imobiliário</span>
+              <span className="brand-title">Painel Administrativo</span>
+            </div>
+          </a>
 
-        <form onSubmit={onSubmit} className="space-y-3">
-          <div>
-            <label className="block text-sm mb-1">Nome</label>
-            <input
-              className="w-full border rounded-lg px-3 py-2"
-              value={form.nome}
-              onChange={(e) => setForm({ ...form, nome: e.target.value })}
-              required
-            />
+          <nav className="header-nav">
+            <a className="muted-link" href="#acessibilidade">Acessibilidade</a>
+            <a className="muted-link" href="#suporte">Suporte</a>
+          </nav>
+        </div>
+      </header>
+
+      {/* MAIN centralizado */}
+      <main className="site-main center-wrap">
+        <section className="card register-card">
+          <div className="card-head">
+            <h1>Criar conta</h1>
+            <p>Preencha os dados para acessar o painel.</p>
           </div>
 
-          <div>
-            <label className="block text-sm mb-1">E-mail</label>
-            <input
-              type="email"
-              className="w-full border rounded-lg px-3 py-2"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              required
-            />
-          </div>
+          <form onSubmit={onSubmit}>
+            <div className="field">
+              <label htmlFor="nome">Nome</label>
+              <input
+                id="nome"
+                className="input"
+                value={form.nome}
+                onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                placeholder="Seu nome completo"
+                required
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm mb-1">Perfil</label>
-            <select
-              className="w-full border rounded-lg px-3 py-2"
-              value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
-            >
-              <option value="ATENDENTE">Atendente</option>
-              <option value="ADMIN">Administrador</option>
-            </select>
-          </div>
+            <div className="field">
+              <label htmlFor="email">E-mail</label>
+              <input
+                id="email"
+                type="email"
+                className="input"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="voce@empresa.com"
+                autoComplete="username"
+                required
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm mb-1">Senha</label>
-            <input
-              type="password"
-              className="w-full border rounded-lg px-3 py-2"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              required
-              minLength={6}
-            />
-          </div>
+            <div className="field">
+              <label htmlFor="role">Perfil</label>
+              <select
+                id="role"
+                className="input"
+                value={form.role}
+                onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
+              >
+                <option value="ATENDENTE">Atendente</option>
+                <option value="ADMIN">Administrador</option>
+              </select>
+            </div>
 
-          <div>
-            <label className="block text-sm mb-1">Confirmar senha</label>
-            <input
-              type="password"
-              className="w-full border rounded-lg px-3 py-2"
-              value={form.confirm}
-              onChange={(e) => setForm({ ...form, confirm: e.target.value })}
-              required
-              minLength={6}
-            />
-          </div>
+            <div className="field">
+              <label htmlFor="password">Senha</label>
+              <input
+                id="password"
+                type="password"
+                className="input"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                placeholder="••••••••"
+                autoComplete="new-password"
+                required
+                minLength={6}
+              />
+            </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+            <div className="field">
+              <label htmlFor="confirm">Confirmar senha</label>
+              <input
+                id="confirm"
+                type="password"
+                className="input"
+                value={form.confirm}
+                onChange={(e) => setForm({ ...form, confirm: e.target.value })}
+                placeholder="Repita a senha"
+                autoComplete="new-password"
+                required
+                minLength={6}
+              />
+            </div>
 
-          <button
-            type="submit"
-            className="w-full bg-indigo-600 text-white rounded-lg py-2 font-medium hover:opacity-95 disabled:opacity-60"
-            disabled={loading}
-          >
-            {loading ? "Criando..." : "Criar conta"}
-          </button>
-        </form>
+            {error && <span className="field-error">{error}</span>}
 
-        <p className="text-sm text-slate-600 mt-4">
-          Já tem conta?{" "}
-          <Link className="text-indigo-600 hover:text-indigo-800" to="/login">
-            Entrar
-          </Link>
-        </p>
-      </Card>
+            <button className="btn-primary" type="submit" disabled={loading}>
+              {loading ? "Criando..." : "Criar conta"}
+            </button>
+          </form>
+
+          <p className="below-text">
+            Já tem conta?{" "}
+            <Link className="link" to="/login">
+              Entrar
+            </Link>
+          </p>
+        </section>
+      </main>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { createContext, useEffect, useMemo, useState } from "react";
 
-type User = { id: number; nome: string; email: string; role: "ADMIN" | "ATENDENTE" } | null;
+export type Role = "ADMIN" | "ATENDENTE";
+export type User = { id: number; nome: string; email: string; role: Role } | null;
 
 type AuthContextType = {
   user: User;
@@ -11,24 +12,25 @@ type AuthContextType = {
 export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User>(null);
+  const [user, setUserState] = useState<User>(null);
 
+  // hidrata do localStorage ao iniciar
   useEffect(() => {
     const raw = localStorage.getItem("auth:user");
-    if (raw) setUser(JSON.parse(raw));
+    if (raw) setUserState(JSON.parse(raw));
   }, []);
 
   const value = useMemo(
     () => ({
       user,
       setUser: (u: User) => {
-        setUser(u);
+        setUserState(u);
         if (u) localStorage.setItem("auth:user", JSON.stringify(u));
         else localStorage.removeItem("auth:user");
       },
       logout: () => {
         localStorage.removeItem("auth:user");
-        setUser(null);
+        setUserState(null);
         window.location.href = "/login";
       },
     }),

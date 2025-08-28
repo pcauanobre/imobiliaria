@@ -1,39 +1,52 @@
-import { createContext, useEffect, useMemo, useState } from "react";
+// src/app/routes.tsx
+import { useEffect, useState } from "react";
+import { createBrowserRouter, Navigate } from "react-router-dom";
+import LoginPage from "../pages/Login/LoginPage";
+import RegisterPage from "../pages/Register/RegisterPage";
+import DashboardPage from "../pages/Dashboard/DashboardPage";
+import { useAuth } from "../hooks/useAuth";
 
-type User = { id: number; nome: string; email: string; role: "ADMIN" | "ATENDENTE" } | null;
-
-type AuthContextType = {
-  user: User;
-  setUser: (u: User) => void;
-  logout: () => void;
-};
-
-export const AuthContext = createContext<AuthContextType | null>(null);
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User>(null);
+// Protege rotas e hidrata o contexto a partir do localStorage
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { user, setUser } = useAuth();
+  const [booting, setBooting] = useState(true);
 
   useEffect(() => {
-    const raw = localStorage.getItem("auth:user");
-    if (raw) setUser(JSON.parse(raw));
-  }, []);
+    if (!user) {
+      const raw = localStorage.getItem("auth:user");
+      if (raw) {
+        try {
+          setUser(JSON.parse(raw));
+        } catch {
+          // se der erro no parse, segue sem usuário
+        }
+      }
+    }
+    const t = setTimeout(() => setBooting(false), 0);
+    return () => clearTimeout(t);
+  }, [user, setUser]);
 
-  const value = useMemo(
-    () => ({
-      user,
-      setUser: (u: User) => {
-        setUser(u);
-        if (u) localStorage.setItem("auth:user", JSON.stringify(u));
-        else localStorage.removeItem("auth:user");
-      },
-      logout: () => {
-        localStorage.removeItem("auth:user");
-        setUser(null);
-        window.location.href = "/login";
-      },
-    }),
-    [user]
-  );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  if (booting) return null; // opcional: um spinner aqui
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
 }
+
+// Sempre redireciona "/" para "/login"
+function IndexRedirect() {
+  return <Navigate to="/login" replace />;
+}
+
+export const router = createBrowserRouter([
+  { path: "/", element: <IndexRedirect /> },
+  { path: "/login", element: <LoginPage /> },
+  { path: "/register", element: <RegisterPage /> },
+  {
+    path: "/dashboard",
+    element: (
+      <RequireAuth>
+        <DashboardPage />
+      </RequireAuth>
+    ),
+  },
+  { path: "*", element: <Navigate to="/" replace /> },
+]);
