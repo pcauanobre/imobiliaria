@@ -1,17 +1,25 @@
 package com.pedrocaua.imobiliaria_api.config;
 
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
+
+import java.util.List;
 
 @Configuration
-public class CorsConfig implements WebMvcConfigurer {
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowedOrigins("http://localhost:5173") // seu front (Vite). mude/adicione se necessário.
-                .allowedMethods("GET","POST","PUT","PATCH","DELETE","OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true);
+public class CorsConfig {
+    @Bean
+    public CorsFilter corsFilter() {
+        CorsConfiguration cfg = new CorsConfiguration();
+        cfg.setAllowedOrigins(List.of("http://localhost:5173"));
+        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        cfg.setAllowedHeaders(List.of("Content-Type", "Authorization"));
+        cfg.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", cfg);
+        return new CorsFilter(source);
     }
 }

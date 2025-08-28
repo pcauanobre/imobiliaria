@@ -2,7 +2,9 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Card from "../../components/ui/Card";
-import { useAuth } from "../../hooks/useAuth";
+import "./login.css";
+
+const API = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
 const schema = z.object({
   email: z.string().email("E-mail inválido"),
@@ -13,7 +15,6 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export default function LoginPage() {
-  const { login } = useAuth();
   const {
     handleSubmit,
     register,
@@ -24,17 +25,35 @@ export default function LoginPage() {
   });
 
   async function onSubmit(data: FormData) {
-    // FICTÍCIO: não chama API real.
-    // Apenas "loga" salvando o e-mail no localStorage usando o AuthContext.
-    await new Promise((r) => setTimeout(r, 500)); // simula delay
-    login(data.email);
-    // redireciono via history API
-    window.location.href = "/dashboard";
+    try {
+      const res = await fetch(`${API}/api/v1/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+        }),
+      });
+
+      if (!res.ok) {
+        if (res.status === 401) throw new Error("Credenciais inválidas.");
+        if (res.status === 403) throw new Error("Usuário inativo.");
+        throw new Error("Falha ao autenticar.");
+      }
+
+      // Resposta: { id, nome, email, role }
+      const user = await res.json();
+      localStorage.setItem("auth:user", JSON.stringify(user));
+      // redireciona
+      window.location.href = "/dashboard";
+    } catch (err: any) {
+      alert(err.message || "Erro inesperado ao entrar.");
+    }
   }
 
   return (
-    <div className="container center">
-      <div style={{ width: 380 }}>
+    <div className="login-wrapper">
+      <div className="login-box">
         <Card>
           <div className="col" style={{ gap: 16 }}>
             <div>
@@ -77,6 +96,7 @@ export default function LoginPage() {
                   <input type="checkbox" {...register("remember")} />
                   Lembrar de mim
                 </label>
+
                 <button
                   type="button"
                   className="link-btn small"
@@ -93,7 +113,7 @@ export default function LoginPage() {
 
             <div className="hr" />
             <div className="small">
-              * Protótipo: o botão **Entrar** apenas simula login e redireciona para o Dashboard.
+              * Ao entrar, os dados do usuário retornados pela API são salvos em <code>localStorage</code>.
             </div>
           </div>
         </Card>

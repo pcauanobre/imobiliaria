@@ -1,42 +1,39 @@
-import { createContext, useContext, useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import { createContext, useEffect, useMemo, useState } from "react";
+
+type User = { id: number; nome: string; email: string; role: "ADMIN" | "ATENDENTE" } | null;
 
 type AuthContextType = {
-  isAuthenticated: boolean;
-  login: (email: string) => void;
+  user: User;
+  setUser: (u: User) => void;
   logout: () => void;
-  userEmail: string | null;
 };
 
-const AuthContext = createContext<AuthContextType | null>(null);
+export const AuthContext = createContext<AuthContextType | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [userEmail, setUserEmail] = useState<string | null>(
-    localStorage.getItem("auth_email")
-  );
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User>(null);
 
-  const isAuthenticated = !!userEmail;
-
-  const login = (email: string) => {
-    setUserEmail(email);
-    localStorage.setItem("auth_email", email);
-  };
-
-  const logout = () => {
-    setUserEmail(null);
-    localStorage.removeItem("auth_email");
-  };
+  useEffect(() => {
+    const raw = localStorage.getItem("auth:user");
+    if (raw) setUser(JSON.parse(raw));
+  }, []);
 
   const value = useMemo(
-    () => ({ isAuthenticated, login, logout, userEmail }),
-    [isAuthenticated, userEmail]
+    () => ({
+      user,
+      setUser: (u: User) => {
+        setUser(u);
+        if (u) localStorage.setItem("auth:user", JSON.stringify(u));
+        else localStorage.removeItem("auth:user");
+      },
+      logout: () => {
+        localStorage.removeItem("auth:user");
+        setUser(null);
+        window.location.href = "/login";
+      },
+    }),
+    [user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuthContext() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuthContext must be inside AuthProvider");
-  return ctx;
 }

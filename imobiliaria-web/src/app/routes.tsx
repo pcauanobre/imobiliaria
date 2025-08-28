@@ -1,22 +1,39 @@
-import { Navigate, Outlet, createBrowserRouter } from "react-router-dom";
-import LoginPage from "../pages/Login/LoginPage";
-import DashboardPage from "../pages/Dashboard/DashboardPage";
-import { useAuth } from "../hooks/useAuth";
+import { createContext, useEffect, useMemo, useState } from "react";
 
-function ProtectedRoute() {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+type User = { id: number; nome: string; email: string; role: "ADMIN" | "ATENDENTE" } | null;
+
+type AuthContextType = {
+  user: User;
+  setUser: (u: User) => void;
+  logout: () => void;
+};
+
+export const AuthContext = createContext<AuthContextType | null>(null);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User>(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("auth:user");
+    if (raw) setUser(JSON.parse(raw));
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      user,
+      setUser: (u: User) => {
+        setUser(u);
+        if (u) localStorage.setItem("auth:user", JSON.stringify(u));
+        else localStorage.removeItem("auth:user");
+      },
+      logout: () => {
+        localStorage.removeItem("auth:user");
+        setUser(null);
+        window.location.href = "/login";
+      },
+    }),
+    [user]
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-
-export const router = createBrowserRouter([
-  { path: "/", element: <Navigate to="/login" replace /> },
-  { path: "/login", element: <LoginPage /> },
-  {
-    element: <ProtectedRoute />,
-    children: [
-      { path: "/dashboard", element: <DashboardPage /> },
-      // futuras rotas protegidas aqui...
-    ],
-  },
-  { path: "*", element: <Navigate to="/login" replace /> },
-]);

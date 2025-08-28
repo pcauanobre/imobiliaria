@@ -13,3 +13,11 @@ api.interceptors.response.use(
     return Promise.reject(err);
   }
 );
+
+// endpoints básicos
+export const authApi = {
+  register: (data: { nome: string; email: string; password: string; role: string }) =>
+    api.post("/api/v1/auth/register", data),
+  login: (data: { email: string; password: string }) =>
+    api.post("/api/v1/auth/login", data),
+};
