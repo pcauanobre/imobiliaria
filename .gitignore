@@ -1,0 +1,21 @@
+﻿# Node / React
+node_modules/
+dist/
+.vite/
+*.local
+.env*
+!.env.example
+
+# Java / Spring
+target/
+*.log
+*.iml
+.idea/
+.mvn/wrapper/maven-wrapper.jar
+
+# SO / Editor
+.DS_Store
+Thumbs.db
+
+# Uploads locais
+uploads/
