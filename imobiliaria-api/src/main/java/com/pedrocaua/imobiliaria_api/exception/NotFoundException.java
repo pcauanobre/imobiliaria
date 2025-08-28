@@ -1,5 +1,7 @@
 package com.pedrocaua.imobiliaria_api.exception;
 
-public class NotFoundException {
-    public NotFoundException(String msg) { super(msg); }
+public class NotFoundException extends RuntimeException {
+    public NotFoundException(String msg) {
+        super(msg);
+    }
 }

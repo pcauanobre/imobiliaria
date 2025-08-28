@@ -1,5 +1,7 @@
 package com.pedrocaua.imobiliaria_api.exception;
 
-public class BadRequestException {
-    public BadRequestException(String msg) { super(msg); }
+public class BadRequestException extends RuntimeException {
+    public BadRequestException(String msg) {
+        super(msg);
+    }
 }
