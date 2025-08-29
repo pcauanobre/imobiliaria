@@ -1,11 +1,14 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useContext } from "react";
 import { AuthContext } from "./providers/AuthProvider";
+
+import ErrorBoundary from "./components/ErrorBoundary";
+import SidebarLayout from "./components/layout/SidebarLayout";
+
 import LoginPage from "./pages/Login/LoginPage";
 import RegisterPage from "./pages/Register/RegisterPage";
-import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardPage from "./pages/Dashboard/DashboardPage";
-import SidebarLayout from "./components/layout/SidebarLayout"; // <- layout correto
+import ProprietariosPage from "./pages/Proprietarios/Proprietarios";
 
 function Private({ children }: { children: React.ReactNode }) {
   const ctx = useContext(AuthContext);
@@ -32,22 +35,25 @@ export default function App() {
               </Private>
             }
           />
+
+          {/* >>> ROTA CORRETA PARA PROPRIETÁRIOS <<< */}
           <Route
             path="/proprietarios"
             element={
               <Private>
                 <SidebarLayout>
-                  <div style={{ padding: 16 }}>[Proprietários]</div>
+                  <ProprietariosPage />
                 </SidebarLayout>
               </Private>
             }
           />
+
           <Route
             path="/alertas"
             element={
               <Private>
                 <SidebarLayout>
-                  <div style={{ padding: 16 }}>[Alertas]</div>
+                  <div className="p-4">[Alertas]</div>
                 </SidebarLayout>
               </Private>
             }
@@ -57,7 +63,7 @@ export default function App() {
             element={
               <Private>
                 <SidebarLayout>
-                  <div style={{ padding: 16 }}>[Configurações]</div>
+                  <div className="p-4">[Configurações]</div>
                 </SidebarLayout>
               </Private>
             }
