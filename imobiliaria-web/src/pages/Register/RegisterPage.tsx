@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
 import "./register.css";
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
@@ -7,6 +8,8 @@ type Role = "ADMIN" | "ATENDENTE";
 
 export default function RegisterPage() {
   const nav = useNavigate();
+  const { setUser } = useAuth();
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -44,10 +47,10 @@ export default function RegisterPage() {
         throw new Error("Erro ao cadastrar.");
       }
 
-      // Esperado: { id, nome, email, role }
-      const user = await res.json();
-      localStorage.setItem("auth:user", JSON.stringify(user));
-      nav("/dashboard");
+      // Sucesso: não autenticar automaticamente
+      localStorage.removeItem("auth:user");
+      setUser(null);
+      nav("/login", { replace: true, state: { registered: true } });
     } catch (err: any) {
       setError(err.message || "Falha ao cadastrar.");
     } finally {
@@ -57,7 +60,7 @@ export default function RegisterPage() {
 
   return (
     <div className="register-root">
-      {/* HEADER (igual da Login) */}
+      {/* HEADER (mesmo do Login) */}
       <header className="site-header">
         <div className="header-inner">
           <a href="/" className="brand" aria-label="Página inicial">
@@ -87,97 +90,117 @@ export default function RegisterPage() {
       </header>
 
       {/* MAIN centralizado */}
-      <main className="site-main center-wrap">
-        <section className="card register-card">
-          <div className="card-head">
-            <h1>Criar conta</h1>
-            <p>Preencha os dados para acessar o painel.</p>
-          </div>
-
-          <form onSubmit={onSubmit}>
-            <div className="field">
-              <label htmlFor="nome">Nome</label>
-              <input
-                id="nome"
-                className="input"
-                value={form.nome}
-                onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                placeholder="Seu nome completo"
-                required
-              />
+      <main className="site-main">
+        <div className="center-wrap">
+          <section className="card register-card">
+            <div className="card-head">
+              <h1>Criar conta</h1>
+              <p>Preencha os dados para acessar o painel.</p>
             </div>
 
-            <div className="field">
-              <label htmlFor="email">E-mail</label>
-              <input
-                id="email"
-                type="email"
-                className="input"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder="voce@empresa.com"
-                autoComplete="username"
-                required
-              />
-            </div>
+            <form onSubmit={onSubmit} className="register-form">
+              {/* GRID HORIZONTAL */}
+              <div className="grid-2">
+                {/* Coluna esquerda */}
+                <fieldset className="group">
+                  <legend>Dados pessoais</legend>
 
-            <div className="field">
-              <label htmlFor="role">Perfil</label>
-              <select
-                id="role"
-                className="input"
-                value={form.role}
-                onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
-              >
-                <option value="ATENDENTE">Atendente</option>
-                <option value="ADMIN">Administrador</option>
-              </select>
-            </div>
+                  <div className="field">
+                    <label htmlFor="nome">Nome</label>
+                    <input
+                      id="nome"
+                      className="input"
+                      value={form.nome}
+                      onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                      placeholder="Seu nome completo"
+                      required
+                    />
+                  </div>
 
-            <div className="field">
-              <label htmlFor="password">Senha</label>
-              <input
-                id="password"
-                type="password"
-                className="input"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                placeholder="••••••••"
-                autoComplete="new-password"
-                required
-                minLength={6}
-              />
-            </div>
+                  <div className="field">
+                    <label htmlFor="email">E-mail</label>
+                    <input
+                      id="email"
+                      type="email"
+                      className="input"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      placeholder="voce@empresa.com"
+                      autoComplete="username"
+                      required
+                    />
+                  </div>
 
-            <div className="field">
-              <label htmlFor="confirm">Confirmar senha</label>
-              <input
-                id="confirm"
-                type="password"
-                className="input"
-                value={form.confirm}
-                onChange={(e) => setForm({ ...form, confirm: e.target.value })}
-                placeholder="Repita a senha"
-                autoComplete="new-password"
-                required
-                minLength={6}
-              />
-            </div>
+                  <div className="field">
+                    <label htmlFor="role">Perfil</label>
+                    <select
+                      id="role"
+                      className="input"
+                      value={form.role}
+                      onChange={(e) =>
+                        setForm({ ...form, role: e.target.value as Role })
+                      }
+                    >
+                      <option value="ATENDENTE">Atendente</option>
+                      <option value="ADMIN">Administrador</option>
+                    </select>
+                  </div>
+                </fieldset>
 
-            {error && <span className="field-error">{error}</span>}
+                {/* Coluna direita */}
+                <fieldset className="group">
+                  <legend>Segurança</legend>
 
-            <button className="btn-primary" type="submit" disabled={loading}>
-              {loading ? "Criando..." : "Criar conta"}
-            </button>
-          </form>
+                  <div className="field">
+                    <label htmlFor="password">Senha</label>
+                    <input
+                      id="password"
+                      type="password"
+                      className="input"
+                      value={form.password}
+                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                      placeholder="••••••••"
+                      autoComplete="new-password"
+                      required
+                      minLength={6}
+                    />
+                  </div>
 
-          <p className="below-text">
-            Já tem conta?{" "}
-            <Link className="link" to="/login">
-              Entrar
-            </Link>
-          </p>
-        </section>
+                  <div className="field">
+                    <label htmlFor="confirm">Confirmar senha</label>
+                    <input
+                      id="confirm"
+                      type="password"
+                      className="input"
+                      value={form.confirm}
+                      onChange={(e) => setForm({ ...form, confirm: e.target.value })}
+                      placeholder="Repita a senha"
+                      autoComplete="new-password"
+                      required
+                      minLength={6}
+                    />
+                  </div>
+
+                  {error && <span className="field-error">{error}</span>}
+                </fieldset>
+              </div>
+
+              {/* AÇÕES centralizadas */}
+              <div className="form-actions">
+                <button className="btn-primary" type="submit" disabled={loading}>
+                  {loading ? "Criando..." : "Criar conta"}
+                </button>
+
+                <p className="below-text-inline">
+                  Já tem conta?{" "}
+                  <Link className="link" to="/login">
+                    Entrar
+                  </Link>
+                </p>
+              </div>
+            </form>
+          </section>
+        </div>
       </main>
     </div>
   );

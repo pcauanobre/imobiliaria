@@ -14,7 +14,7 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUserState] = useState<User>(null);
 
-  // hidrata do localStorage ao iniciar
+  // Hidrata do localStorage ao iniciar
   useEffect(() => {
     const raw = localStorage.getItem("auth:user");
     if (raw) setUserState(JSON.parse(raw));

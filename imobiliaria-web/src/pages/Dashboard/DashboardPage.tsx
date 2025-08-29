@@ -7,12 +7,17 @@ export default function DashboardPage() {
   return (
     <div className="container" style={{ padding: 24 }}>
       <h1 className="title">Dashboard</h1>
-      <p className="subtitle">
-        Bem-vindo{user?.nome ? `, ${user.nome}` : ""} {user?.role ? `(${user.role})` : ""}.
+
+      <p className="subtitle" style={{ marginBottom: 8 }}>
+        {user
+          ? <>Você já está logado {user?.nome ? <>como <strong>{user.nome}</strong></> : "em uma conta"} {user?.role && `(${user.role})`}.<br />Por isso te trouxemos direto pra cá :)</>
+          : "Você não está logado."}
       </p>
 
-      <div style={{ marginTop: 16, display: "flex", gap: 16 }}>
-        <button className="btn" onClick={logout}>Sair</button>
+      <div style={{ marginTop: 16, display: "flex", gap: 16, alignItems: "center" }}>
+        <button className="btn" onClick={logout}>
+          Desvincular / Logout
+        </button>
         <Link to="/register">Ir para cadastro</Link>
       </div>
 

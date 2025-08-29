@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
 import "./login.css";
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
@@ -15,6 +17,7 @@ type FormData = z.infer<typeof schema>;
 
 export default function LoginPage() {
   const [showRecover, setShowRecover] = useState(false);
+  const { user, setUser } = useAuth();
 
   const {
     handleSubmit,
@@ -24,6 +27,11 @@ export default function LoginPage() {
     resolver: zodResolver(schema),
     defaultValues: { email: "", password: "", remember: true },
   });
+
+  // Se já estiver logado, vai direto pro dashboard
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   async function onSubmit(data: FormData) {
     try {
@@ -39,8 +47,12 @@ export default function LoginPage() {
         throw new Error("Falha ao autenticar.");
       }
 
-      const user = await res.json();
-      localStorage.setItem("auth:user", JSON.stringify(user));
+      const userJson = await res.json();
+
+      // Atualiza o contexto (localStorage é gerenciado pelo AuthProvider)
+      setUser(userJson);
+
+      // Redireciona para o dashboard
       window.location.href = "/dashboard";
     } catch (err: any) {
       alert(err.message || "Erro inesperado ao entrar.");
@@ -49,7 +61,7 @@ export default function LoginPage() {
 
   return (
     <div className="login-root">
-      {/* HEADER (mantido) */}
+      {/* HEADER */}
       <header className="site-header">
         <div className="header-inner">
           <a href="/" className="brand" aria-label="Página inicial">
@@ -78,62 +90,64 @@ export default function LoginPage() {
         </div>
       </header>
 
-      {/* MAIN CENTRALIZADO */}
-      <main className="site-main center-wrap">
-        <section className="card login-card">
-          <div className="card-head">
-            <h1>Faça login</h1>
-            <p>Acesse o painel administrativo da imobiliária.</p>
-          </div>
-
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <div className="field">
-              <label htmlFor="email">E-mail</label>
-              <input
-                id="email"
-                type="email"
-                className="input"
-                placeholder="nome@empresa.com"
-                autoComplete="username"
-                {...register("email")}
-              />
-              {errors.email && <span className="field-error">{errors.email.message}</span>}
+      {/* MAIN centralizado */}
+      <main className="site-main">
+        <div className="center-wrap">
+          <section className="card login-card">
+            <div className="card-head">
+              <h1>Faça login</h1>
+              <p>Acesse o painel administrativo da imobiliária.</p>
             </div>
 
-            <div className="field">
-              <div className="field-row">
-                <label htmlFor="password">Senha</label>
-                <button
-                  type="button"
-                  className="link tiny"
-                  onClick={() => setShowRecover(true)}
-                >
-                  Esqueci minha senha
-                </button>
+            <form onSubmit={handleSubmit(onSubmit)}>
+              <div className="field">
+                <label htmlFor="email">E-mail</label>
+                <input
+                  id="email"
+                  type="email"
+                  className="input"
+                  placeholder="nome@empresa.com"
+                  autoComplete="username"
+                  {...register("email")}
+                />
+                {errors.email && <span className="field-error">{errors.email.message}</span>}
               </div>
-              <input
-                id="password"
-                type="password"
-                className="input"
-                placeholder="••••••••"
-                autoComplete="current-password"
-                {...register("password")}
-              />
-              {errors.password && <span className="field-error">{errors.password.message}</span>}
-            </div>
 
-            <div className="options">
-              <label className="remember">
-                <input type="checkbox" {...register("remember")} /> Lembrar de mim neste dispositivo
-              </label>
-              <a className="muted-link" href="/register">Criar conta</a>
-            </div>
+              <div className="field">
+                <div className="field-row">
+                  <label htmlFor="password">Senha</label>
+                  <button
+                    type="button"
+                    className="link tiny"
+                    onClick={() => setShowRecover(true)}
+                  >
+                    Esqueci minha senha
+                  </button>
+                </div>
+                <input
+                  id="password"
+                  type="password"
+                  className="input"
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  {...register("password")}
+                />
+                {errors.password && <span className="field-error">{errors.password.message}</span>}
+              </div>
 
-            <button className="btn-primary" disabled={isSubmitting}>
-              {isSubmitting ? "Entrando..." : "Entrar"}
-            </button>
-          </form>
-        </section>
+              <div className="options">
+                <label className="remember">
+                  <input type="checkbox" {...register("remember")} /> Lembrar de mim neste dispositivo
+                </label>
+                <a className="muted-link" href="/register">Criar conta</a>
+              </div>
+
+              <button className="btn-primary" disabled={isSubmitting}>
+                {isSubmitting ? "Entrando..." : "Entrar"}
+              </button>
+            </form>
+          </section>
+        </div>
       </main>
 
       {/* MODAL RECUPERAR SENHA */}
