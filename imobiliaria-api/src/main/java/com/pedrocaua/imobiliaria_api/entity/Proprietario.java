@@ -21,7 +21,7 @@ public class Proprietario {
     @Column(nullable = false, length = 120)
     private String nome;
 
-    @Column(name = "doc", length = 20)              // CPF/CNPJ (não forço unique aqui; ajuste se quiser)
+    @Column(name = "doc", length = 20)
     private String doc;
 
     @Column(length = 120)
@@ -44,7 +44,6 @@ public class Proprietario {
     )
     private List<Imovel> imoveis = new ArrayList<>();
 
-    /* ==== helpers de relacionamento ==== */
     public void addImovel(Imovel imovel) {
         if (imovel == null) return;
         imoveis.add(imovel);
@@ -57,13 +56,11 @@ public class Proprietario {
         imovel.setProprietario(null);
     }
 
-    /* ==== lifecycle ==== */
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) createdAt = LocalDateTime.now();
     }
 
-    /* ==== getters/setters ==== */
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -93,7 +90,6 @@ public class Proprietario {
         }
     }
 
-    /* ==== equals/hashCode por id ==== */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

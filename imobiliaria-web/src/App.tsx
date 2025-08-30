@@ -8,7 +8,7 @@ import SidebarLayout from "./components/layout/SidebarLayout";
 import LoginPage from "./pages/Login/LoginPage";
 import RegisterPage from "./pages/Register/RegisterPage";
 import DashboardPage from "./pages/Dashboard/DashboardPage";
-import ProprietariosPage from "./pages/Proprietarios/Proprietarios";
+import ProprietariosPage from "./pages/Proprietarios/ProprietariosPage";
 
 function Private({ children }: { children: React.ReactNode }) {
   const ctx = useContext(AuthContext);

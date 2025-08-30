@@ -3,27 +3,19 @@ package com.pedrocaua.imobiliaria_api.dto;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * DTO de saída do Proprietário.
- * Inclui métodos com nomes curtos (getTel/getObs) e equivalentes longos
- * (getTelefone/getObservacoes) para compatibilidade com o service/mapper.
- */
 public class ProprietarioDTO {
 
     private Long id;
     private String nome;
-    private String doc;     // CPF/CNPJ
+    private String doc;
     private String email;
 
-    // nomes curtos usados no service atual
     private String tel;
     private String obs;
 
     private List<ImovelDTO> imoveis = new ArrayList<>();
 
     public ProprietarioDTO() {}
-
-    // --------- getters / setters principais ---------
 
     public Long getId() {
         return id;
@@ -53,7 +45,6 @@ public class ProprietarioDTO {
         this.email = email;
     }
 
-    // ---- nomes curtos (usados pelo service atual) ----
     public String getTel() {
         return tel;
     }
@@ -75,8 +66,6 @@ public class ProprietarioDTO {
         this.imoveis = (imoveis != null) ? imoveis : new ArrayList<>();
     }
 
-    // --------- ALIAS para compatibilidade ---------
-    // Se em algum lugar estiver usando getTelefone/setTelefone:
     public String getTelefone() {
         return getTel();
     }
@@ -84,7 +73,6 @@ public class ProprietarioDTO {
         setTel(telefone);
     }
 
-    // E para observações:
     public String getObservacoes() {
         return getObs();
     }

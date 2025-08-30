@@ -11,16 +11,13 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ProprietarioRepository extends JpaRepository<Proprietario, Long> {
 
-    // ====== EXIST/UNIQUE HELPERS (opcionais) ======
     boolean existsByDoc(String doc);
     boolean existsByEmailIgnoreCase(String email);
 
-    // ====== OPÇÃO 1: método derivado (funciona com o service atual) ======
     Page<Proprietario> findByNomeContainingIgnoreCaseOrDocContainingIgnoreCaseOrEmailContainingIgnoreCase(
             String nome, String doc, String email, Pageable pageable
     );
 
-    // ====== OPÇÃO 2: método com @Query (nome curto) ======
     @Query("""
            SELECT p
              FROM Proprietario p

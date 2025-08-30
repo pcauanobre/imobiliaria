@@ -47,20 +47,24 @@ public class ProprietarioService {
                 i.setTipo(ireq.getTipo());
                 i.setSituacao(ireq.getSituacao());
                 i.setObs(ireq.getObs());
-                p.addImovel(i); // seta os dois lados
+                p.addImovel(i);
             }
         }
 
         Proprietario saved = proprietarioRepository.save(p);
-        return toDTO(saved);
+        // no create, pode incluir imóveis
+        return toDTO(saved, true);
     }
 
     /* ================== READ ================== */
+    @Transactional(Transactional.TxType.SUPPORTS)
     public ProprietarioDTO get(Long id) {
-        return toDTO(findOrThrow(id));
+        // no get detalhado, incluir imóveis
+        return toDTO(findOrThrow(id), true);
     }
 
-    /** Lista paginada + filtro simples por nome/doc/email. */
+    /** Lista paginada + filtro simples por nome/doc/email (SEM carregar imóveis). */
+    @Transactional(Transactional.TxType.SUPPORTS)
     public Page<ProprietarioDTO> search(String q, int page, int size) {
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(size, 100));
 
@@ -68,16 +72,16 @@ public class ProprietarioService {
         if (q == null || q.isBlank()) {
             pageEntities = proprietarioRepository.findAll(pageable);
         } else {
-            // Certifique-se de ter este método no repository ou use a @Query que te passei
             pageEntities = proprietarioRepository
                     .findByNomeContainingIgnoreCaseOrDocContainingIgnoreCaseOrEmailContainingIgnoreCase(
                             q, q, q, pageable
                     );
+            // ou: proprietarioRepository.search(q, pageable);
         }
 
         List<ProprietarioDTO> content = pageEntities.getContent()
                 .stream()
-                .map(this::toDTO)
+                .map(p -> toDTO(p, false)) // <<< não toca na coleção lazy
                 .collect(Collectors.toList());
 
         return new PageImpl<>(content, pageable, pageEntities.getTotalElements());
@@ -88,26 +92,21 @@ public class ProprietarioService {
     public ProprietarioDTO update(Long id, ProprietarioUpdateRequest body) {
         Proprietario p = findOrThrow(id);
 
-        // Atualiza campos simples (sem obrigar todos virem)
         if (body.getNome() != null) p.setNome(body.getNome());
         if (body.getDoc() != null)  p.setDoc(body.getDoc());
         if (body.getEmail() != null) p.setEmail(body.getEmail());
         if (body.getTel() != null)   p.setTel(body.getTel());
         if (body.getObs() != null)   p.setObs(body.getObs());
 
-        // Upsert de imóveis (opcional)
         if (body.getImoveis() != null) {
-            // Index dos atuais por ID
             Map<Long, Imovel> atuaisPorId = p.getImoveis().stream()
                     .filter(i -> i.getId() != null)
                     .collect(Collectors.toMap(Imovel::getId, Function.identity()));
 
-            // Quais IDs manter
             Set<Long> manterIds = new HashSet<>();
 
             for (ImovelUpsertDTO in : body.getImoveis()) {
                 if (in.getId() != null && atuaisPorId.containsKey(in.getId())) {
-                    // UPDATE
                     Imovel i = atuaisPorId.get(in.getId());
                     if (in.getEnd() != null)      i.setEndereco(in.getEnd());
                     if (in.getTipo() != null)     i.setTipo(in.getTipo());
@@ -115,23 +114,21 @@ public class ProprietarioService {
                     if (in.getObs() != null)      i.setObs(in.getObs());
                     manterIds.add(i.getId());
                 } else {
-                    // INSERT
                     Imovel i = new Imovel();
                     i.setEndereco(in.getEnd());
                     i.setTipo(in.getTipo());
                     i.setSituacao(in.getSituacao());
                     i.setObs(in.getObs());
                     p.addImovel(i);
-                    // sem ID até salvar; não entra em remoção por checarmos apenas IDs não nulos
                 }
             }
 
-            // REMOVE: imóveis antigos que não vieram no payload (apenas os que têm ID)
             p.getImoveis().removeIf(i -> i.getId() != null && !manterIds.contains(i.getId()));
         }
 
         Proprietario saved = proprietarioRepository.save(p);
-        return toDTO(saved);
+        // update detalhado: inclui imóveis
+        return toDTO(saved, true);
     }
 
     /* ========== ADICIONAR IMÓVEL ========== */
@@ -147,7 +144,7 @@ public class ProprietarioService {
 
         p.addImovel(i);
         Proprietario saved = proprietarioRepository.save(p);
-        return toDTO(saved);
+        return toDTO(saved, true);
     }
 
     /* ================== DELETE ================== */
@@ -163,7 +160,8 @@ public class ProprietarioService {
                 .orElseThrow(() -> new NotFoundException("Proprietário não encontrado: id=" + id));
     }
 
-    private ProprietarioDTO toDTO(Proprietario p) {
+    /** Conversão controlando se deve carregar imóveis. */
+    private ProprietarioDTO toDTO(Proprietario p, boolean includeImoveis) {
         ProprietarioDTO dto = new ProprietarioDTO();
         dto.setId(p.getId());
         dto.setNome(p.getNome());
@@ -172,7 +170,7 @@ public class ProprietarioService {
         dto.setTelefone(p.getTel());
         dto.setObservacoes(p.getObs());
 
-        if (p.getImoveis() != null) {
+        if (includeImoveis && p.getImoveis() != null) {
             List<ImovelDTO> imoveis = p.getImoveis()
                     .stream()
                     .map(this::toDTO)
