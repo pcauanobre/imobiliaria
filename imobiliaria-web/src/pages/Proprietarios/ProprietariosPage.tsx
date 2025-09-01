@@ -1,6 +1,7 @@
 // pages/Proprietarios/ProprietariosPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
+import ImoveisPage from "./Imoveis";  // 👈 mantém
 
 /* ============================================================
    CSS (no mesmo arquivo)
@@ -29,7 +30,7 @@ const css = `
 .breadcrumb {
   color: var(--muted);
   font-size:14px;
-  margin-bottom:24px;   /* <-- adiciona espaço */
+  margin-bottom:24px;
 }
 .breadcrumb a { color: inherit; text-decoration: none }
 .breadcrumb-active { font-weight:700; color: var(--brand) }
@@ -96,27 +97,21 @@ const css = `
   padding:12px 14px; font-size:15px;
 }
 
-/* Rodapé do modal (NÃO deixa nada esticar e alinha à direita) */
+/* Rodapé do modal */
 .confirm-actions{
   margin-top:14px;
   display:flex; align-items:center; gap:10px;
-  justify-content:flex-end;        /* tudo à direita */
-  flex-wrap:nowrap;                /* evita quebra */
+  justify-content:flex-end;
+  flex-wrap:nowrap;
 }
-.confirm-actions .btn {
-  flex: 0 0 auto;   /* não cresce */
-  width: auto;      /* não estica */
-}
-.confirm-actions .lead {
-  margin-right: auto; /* só serve pra empurrar, sem esticar */
-}
+.confirm-actions .btn { flex: 0 0 auto; width: auto; }
+.confirm-actions .lead { margin-right: auto; }
 
-/* Botão perigoso (diálogo de exclusão) */
+/* Botão perigoso */
 .danger{
   background:#ef4444; color:#fff; border:0; border-radius:12px;
   padding:10px 16px; cursor:pointer;
 }
-
 
 /* ============================================================
 //## SESSAO: BOTAO ADICIONAR
@@ -143,7 +138,7 @@ const css = `
 
 .tabbar {
   display:flex; gap:8px;
-  padding:12px 18px 18px; /* padding-bottom aumentado */
+  padding:12px 18px 18px;
   border-bottom:1px solid var(--border)
 }
 .tab {
@@ -177,7 +172,7 @@ const css = `
   display:inline-flex; align-items:center; gap:8px;
   font-weight:800; color:var(--text);
   background:#fff; border:1px solid #e5e7eb; border-radius:12px;
-  padding:10px 14px; cursor:pointer;
+  padding:10px 14px; cursor:pointer; text-decoration:none;
 }
 .backbtn:hover { background:#f8fafc }
 .backbtn svg { display:block }
@@ -284,7 +279,6 @@ async function createProprietario(p: Proprietario): Promise<Proprietario> {
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(await res.text());
-  // agora retorna o objeto criado (com id)
   return res.json();
 }
 async function deleteProprietario(id: number): Promise<void> {
@@ -299,7 +293,7 @@ function AddProprietarioModal({
   open, onClose, onSaved,
 }: { open: boolean; onClose: () => void; onSaved: () => Promise<void> | void }) {
   const [form, setForm] = useState<Proprietario>({ nome: "", doc: "", email: "", tel: "", obs: "" });
-  const nav = useNavigate(); // navegação SPA
+  const nav = useNavigate();
 
   useEffect(() => {
     if (open) setForm({ nome: "", doc: "", email: "", tel: "", obs: "" });
@@ -405,8 +399,6 @@ function AddProprietarioModal({
     </div>
   );
 }
-
-
 
 function ConfirmDeleteDialog({
   open, onClose, onConfirm,
@@ -596,9 +588,9 @@ function ProprietariosListView() {
    DETALHE
    ============================================================ */
 function ProprietarioDetalheView() {
-  const { slug } = useParams(); // 👈 usa :slug
+  const { slug } = useParams(); // usa :slug
   const nav = useNavigate();
-  const location = useLocation() as { state?: { owner?: Proprietario } };
+  const location = useLocation() as any; // precisamos de state e pathname
 
   const [owner, setOwner] = useState<Proprietario | null | undefined>(
     location.state?.owner ?? undefined
@@ -630,6 +622,10 @@ function ProprietarioDetalheView() {
     })();
   }, [slug]);
 
+  // ---- Tabs: base e ativo pela URL ----
+  const base = `/proprietarios/${slug}`;
+  const isImoveis = (location.pathname as string).endsWith("/imoveis");
+
   return (
     <div className="page">
       <style>{css}</style>
@@ -656,7 +652,7 @@ function ProprietarioDetalheView() {
           <div className="cardhead">
             <div style={{ flex: 1 }}>
               <div className="backline">
-                <button className="backbtn" onClick={() => nav(-1)} title="Voltar">
+                <Link to="/proprietarios" className="backbtn" title="Voltar">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path
                       d="M15 19l-7-7 7-7"
@@ -666,9 +662,8 @@ function ProprietarioDetalheView() {
                     />
                   </svg>
                   Voltar
-                </button>
+                </Link>
               </div>
-
               <h2>{owner.nome}</h2>
               <div style={{ color: "#64748b" }}>{formatDoc(owner.doc)} · 0 imóveis</div>
             </div>
@@ -697,8 +692,11 @@ function ProprietarioDetalheView() {
           </div>
 
           <div className="tabbar">
-            <span className="tab active">Dados</span>
+            <Link to={base} className={`tab ${!isImoveis ? "active" : ""}`}>Dados</Link>
             <span className="tab">Documentos</span>
+            <Link to={`${base}/imoveis`} className={`tab ${isImoveis ? "active" : ""}`}>
+              Imóveis
+            </Link>
           </div>
 
           <div className="body">
@@ -731,11 +729,18 @@ function ProprietarioDetalheView() {
   );
 }
 
-
 /* ============================================================
    Export principal: decide por rota (lista x detalhe)
    ============================================================ */
 export default function ProprietariosPage() {
-  const { slug } = useParams(); // 👈 usa :slug aqui também
-  return slug ? <ProprietarioDetalheView /> : <ProprietariosListView />;
+  const { slug } = useParams();
+  const location = useLocation();
+
+  if (!slug) return <ProprietariosListView />;
+
+  if (location.pathname.endsWith("/imoveis")) {
+    return <ImoveisPage />; // 👈 chama a página de imóveis
+  }
+
+  return <ProprietarioDetalheView />;
 }

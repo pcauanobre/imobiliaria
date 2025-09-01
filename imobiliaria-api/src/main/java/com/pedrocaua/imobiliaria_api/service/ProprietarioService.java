@@ -10,12 +10,13 @@ import com.pedrocaua.imobiliaria_api.entity.Imovel;
 import com.pedrocaua.imobiliaria_api.entity.Proprietario;
 import com.pedrocaua.imobiliaria_api.exception.NotFoundException;
 import com.pedrocaua.imobiliaria_api.repository.ProprietarioRepository;
-import jakarta.transaction.Transactional;
+import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.function.Function;
@@ -52,19 +53,22 @@ public class ProprietarioService {
         }
 
         Proprietario saved = proprietarioRepository.save(p);
-        // no create, pode incluir imóveis
+        // garante a coleção pronta antes do DTO
+        Hibernate.initialize(saved.getImoveis());
         return toDTO(saved, true);
     }
 
     /* ================== READ ================== */
-    @Transactional(Transactional.TxType.SUPPORTS)
+    @Transactional(readOnly = true)
     public ProprietarioDTO get(Long id) {
-        // no get detalhado, incluir imóveis
-        return toDTO(findOrThrow(id), true);
+        Proprietario entity = findOrThrow(id);
+        // precisamos dos imóveis aqui -> inicializa dentro da transação
+        Hibernate.initialize(entity.getImoveis());
+        return toDTO(entity, true);
     }
 
     /** Lista paginada + filtro simples por nome/doc/email (SEM carregar imóveis). */
-    @Transactional(Transactional.TxType.SUPPORTS)
+    @Transactional(readOnly = true)
     public Page<ProprietarioDTO> search(String q, int page, int size) {
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(size, 100));
 
@@ -76,12 +80,11 @@ public class ProprietarioService {
                     .findByNomeContainingIgnoreCaseOrDocContainingIgnoreCaseOrEmailContainingIgnoreCase(
                             q, q, q, pageable
                     );
-            // ou: proprietarioRepository.search(q, pageable);
         }
 
         List<ProprietarioDTO> content = pageEntities.getContent()
                 .stream()
-                .map(p -> toDTO(p, false)) // <<< não toca na coleção lazy
+                .map(p -> toDTO(p, false)) // não toca na coleção lazy
                 .collect(Collectors.toList());
 
         return new PageImpl<>(content, pageable, pageEntities.getTotalElements());
@@ -127,7 +130,7 @@ public class ProprietarioService {
         }
 
         Proprietario saved = proprietarioRepository.save(p);
-        // update detalhado: inclui imóveis
+        Hibernate.initialize(saved.getImoveis());
         return toDTO(saved, true);
     }
 
@@ -144,6 +147,7 @@ public class ProprietarioService {
 
         p.addImovel(i);
         Proprietario saved = proprietarioRepository.save(p);
+        Hibernate.initialize(saved.getImoveis());
         return toDTO(saved, true);
     }
 
@@ -155,6 +159,7 @@ public class ProprietarioService {
     }
 
     /* ================== HELPERS ================== */
+    @Transactional(readOnly = true)
     private Proprietario findOrThrow(Long id) {
         return proprietarioRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Proprietário não encontrado: id=" + id));

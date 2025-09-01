@@ -1,4 +1,3 @@
-// App.tsx
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useContext } from "react";
 import { AuthContext } from "./providers/AuthProvider";
@@ -55,6 +54,18 @@ export default function App() {
               <Private>
                 <SidebarLayout>
                   <ProprietariosPage />
+                </SidebarLayout>
+              </Private>
+            }
+          />
+
+          {/* aba Imóveis (usa a mesma página para decidir o que renderizar) */}
+          <Route
+            path="/proprietarios/:slug/imoveis"
+            element={
+              <Private>
+                <SidebarLayout>
+                  <ProprietariosPage/>
                 </SidebarLayout>
               </Private>
             }
