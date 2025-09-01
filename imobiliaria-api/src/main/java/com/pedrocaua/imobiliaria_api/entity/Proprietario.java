@@ -15,7 +15,7 @@ import java.util.Objects;
 public class Proprietario {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    // ❌ removemos o auto incremento sequencial
     private Long id;
 
     @Column(nullable = false, length = 120)
@@ -59,6 +59,12 @@ public class Proprietario {
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) createdAt = LocalDateTime.now();
+
+        // 🔥 gera ID aleatório de 4 dígitos se ainda não existir
+        if (id == null) {
+            long randomId = (long) (1000 + Math.random() * 9000); // 1000–9999
+            id = randomId;
+        }
     }
 
     public Long getId() { return id; }

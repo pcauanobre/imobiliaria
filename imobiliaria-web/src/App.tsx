@@ -1,3 +1,4 @@
+// App.tsx
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useContext } from "react";
 import { AuthContext } from "./providers/AuthProvider";
@@ -36,9 +37,20 @@ export default function App() {
             }
           />
 
-          {/* >>> ROTA CORRETA PARA PROPRIETÁRIOS <<< */}
           <Route
             path="/proprietarios"
+            element={
+              <Private>
+                <SidebarLayout>
+                  <ProprietariosPage />
+                </SidebarLayout>
+              </Private>
+            }
+          />
+
+          {/* detalhe com slug */}
+          <Route
+            path="/proprietarios/:slug"
             element={
               <Private>
                 <SidebarLayout>
