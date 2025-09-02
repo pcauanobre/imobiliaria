@@ -2,34 +2,32 @@ package com.pedrocaua.imobiliaria_api.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Payload para atualizar dados do proprietário e (opcionalmente) seus imóveis.
- * Os nomes dos getters/setters (getTel, getDoc, getObs...) batem com o service.
+ * DTO de atualização de Proprietário.
+ * Agora todos os campos são opcionais. Quando vierem preenchidos,
+ * aplicamos validações de formato/tamanho leves.
  */
 public class ProprietarioUpdateRequest {
 
-    @NotBlank(message = "Nome é obrigatório")
+    @Size(max = 255, message = "Nome pode ter no máximo 255 caracteres")
     private String nome;
 
     @Email(message = "E-mail inválido")
-    @NotBlank(message = "E-mail é obrigatório")
     private String email;
 
-    private String tel;   // telefone
-    private String doc;   // CPF/CNPJ
-    private String obs;   // observações
+    private String tel;   // telefone (opcional)
+    private String doc;   // CPF/CNPJ só com dígitos (opcional)
+    private String obs;   // observações (opcional)
 
     /** Imóveis a criar/atualizar; id == null -> criar, id != null -> atualizar. */
     @Valid
     private List<ImovelUpsertDTO> imoveis = new ArrayList<>();
 
-    public ProprietarioUpdateRequest() {}
-
-    // ---- getters/setters (nomes usados no service) ----
+    // ---- getters/setters ----
     public String getNome() { return nome; }
     public void setNome(String nome) { this.nome = nome; }
 

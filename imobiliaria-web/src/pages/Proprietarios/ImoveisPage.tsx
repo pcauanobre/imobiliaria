@@ -1,5 +1,4 @@
-// pages/Proprietarios/Imoveis.tsx
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 /* ============================================================
@@ -58,7 +57,7 @@ textarea.input{ resize:vertical }
 .backbtn:hover{ background:#f8fafc }
 .backbtn svg{ display:block }
 
-/* ===== Popup (mesmo do proprietario) ===== */
+/* ===== Popup ===== */
 .backdrop{
   position:fixed; inset:0; background:rgba(2,6,23,.45);
   display:flex; align-items:center; justify-content:center; padding:24px; z-index:50;
@@ -82,13 +81,20 @@ textarea.input{ resize:vertical }
 .modal-tab.active{ background:var(--brand); border-color:var(--brand); color:#fff }
 .modal-content{
   padding-top:16px;
-  min-height:300px;   /* mantém uma altura mínima */
-  max-height:500px;   /* altura máxima visível */
-  overflow-y:auto;    /* ativa o scroll vertical se passar */
+  min-height:300px;
+  max-height:500px;
+  overflow-y:auto;
 }
 .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:14px }
+
 .thumbgrid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px }
 .thumb{ width:100%; aspect-ratio:1/1; object-fit:cover; border:1px solid var(--border); border-radius:10px }
+
+/* badge usado depois (ex.: pendente) */
+.badge-dot{
+  position:absolute; top:-4px; right:-4px; width:14px; height:14px;
+  background:#ef4444; border-radius:999px; border:2px solid #fff;
+}
 `;
 
 /* ============================================================
@@ -105,40 +111,46 @@ type Proprietario = {
 
 type Imovel = {
   id?: number;
-  end?: string | null;        // endereço (compatível com backend)
+  end?: string | null;
   tipo?: string | null;
   situacao?: string | null;
   obs?: string | null;
+
+  // extras (opcionais – usados na tela de detalhe)
+  finalidade?: string | null;
+  cep?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  uf?: string | null;
+
+  area?: number | null;
+  quartos?: number | null;
+  banheiros?: number | null;
+  vagas?: number | null;
+  iptu?: number | null;
+  condominio?: number | null;
+  anoConstrucao?: number | null;
+  disponivelEm?: string | null; // yyyy-MM-dd
 };
 
 /* ============================================================
-   Helpers (dinheiro, slug, random, etc)
+   Helpers
    ============================================================ */
 function r(min: number, max: number) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function pick<T>(arr: T[]) { return arr[r(0, arr.length - 1)]; }
-// --- helpers p/ normalizar payload ---
-const toNull = (s?: string | null) => {
-  const t = (s ?? "").trim();
-  return t ? t : null;
-};
-const toNum = (s?: string | null) => {
-  const t = (s ?? "").trim();
-  return t ? Number(t) : null;
-};
+const toNull = (s?: string | null) => { const t = (s ?? "").trim(); return t ? t : null; };
+const toNum = (s?: string | null) => { const t = (s ?? "").trim(); return t ? Number(t) : null; };
 
-/** Centraliza labels/opções + gerador "Randomizar".
- *  Se quiser mudar textos/opções, edite AQUI.
- */
 function getImovelFormPreset() {
   const tipos = ["Casa", "Apartamento", "Kitnet", "Sala Comercial", "Terreno", "Galpão"];
   const situacoes = ["Ativo", "Locado", "Desocupado", "Inativo"];
-
   function randomEnd() {
     const ruas = ["Av. Brasil", "Rua das Flores", "Rua das Limeiras", "Av. Beira Mar", "Rua Bahia", "Rua XV de Novembro"];
     const bairros = ["Centro", "Jardim Europa", "Boa Vista", "São José", "Nova Esperança"];
     return `${pick(ruas)}, ${r(10, 999)} - ${pick(bairros)}`;
   }
-
   function random() {
     return {
       end: randomEnd(),
@@ -147,7 +159,6 @@ function getImovelFormPreset() {
       obs: Math.random() < 0.6 ? "Imóvel captado via indicação." : ""
     };
   }
-
   return { tipos, situacoes, random };
 }
 
@@ -164,36 +175,30 @@ async function getProprietario(id: number): Promise<Proprietario> {
 
 async function listImoveisByOwner(ownerId: number): Promise<Imovel[]> {
   let data: any;
-
-  // rota filha
   const res = await fetch(`${API_BASE}/api/v1/proprietarios/${ownerId}/imoveis`);
-  if (res.ok) {
-    data = await res.json();
-  } else {
-    // fallback
+  if (res.ok) data = await res.json();
+  else {
     const res2 = await fetch(`${API_BASE}/api/v1/imoveis?ownerId=${ownerId}`);
     if (!res2.ok) throw new Error("Erro ao listar imóveis");
     data = await res2.json();
   }
-
-  // o backend devolve "endereco"; front mostra "end"
   const arr: any[] = Array.isArray(data) ? data : (data?.content ?? []);
-  return arr.map((d) => ({
-    ...d,
-    end: d.endereco ?? d.end ?? null,
-  })) as Imovel[];
+  return arr.map((d) => ({ ...d, end: d.endereco ?? d.end ?? null })) as Imovel[];
 }
 
+async function getImovel(id: number): Promise<Imovel> {
+  const res = await fetch(`${API_BASE}/api/v1/imoveis/${id}`);
+  if (!res.ok) throw new Error("Erro ao buscar imóvel");
+  const dto = await res.json();
+  return { ...dto, end: dto.endereco ?? dto.end ?? null };
+}
 
 async function createImovel(ownerId: number, body: any): Promise<Imovel> {
   const payload = {
-    // básicos
     end: toNull(body.end),
     tipo: toNull(body.tipo),
     situacao: toNull(body.situacao),
     obs: toNull(body.obs),
-
-    // extras (todos opcionais)
     finalidade: toNull(body.finalidade),
     cep: toNull(body.cep),
     numero: toNull(body.numero),
@@ -201,32 +206,31 @@ async function createImovel(ownerId: number, body: any): Promise<Imovel> {
     bairro: toNull(body.bairro),
     cidade: toNull(body.cidade),
     uf: toNull(body.uf),
-
     area: toNum(body.area),
     quartos: toNum(body.quartos),
     banheiros: toNum(body.banheiros),
     vagas: toNum(body.vagas),
-
     iptu: toNum(body.iptu),
     condominio: toNum(body.condominio),
-
     anoConstrucao: toNum(body.anoConstrucao),
-    // date no formato yyyy-MM-dd vindo do input
     disponivelEm: toNull(body.disponivelEm),
   };
-
   const res = await fetch(`${API_BASE}/api/v1/proprietarios/${ownerId}/imoveis`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(await res.text());
-
   const dto = await res.json();
-  // normaliza a resposta também
   return { ...dto, end: dto.endereco ?? dto.end ?? null };
 }
 
+async function updateImovel(id: number, body: any): Promise<Imovel> {
+  const res = await fetch(`${API_BASE}/api/v1/imoveis/${id}`, {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const dto = await res.json();
+  return { ...dto, end: dto.endereco ?? dto.end ?? null };
+}
 
 async function deleteImovel(id: number): Promise<void> {
   const res = await fetch(`${API_BASE}/api/v1/imoveis/${id}`, { method: "DELETE" });
@@ -234,34 +238,32 @@ async function deleteImovel(id: number): Promise<void> {
 }
 
 /* ============================================================
-   Modal: Adicionar Imóvel (mesmo estilo do de proprietário)
+   Modal: Adicionar/Editar Imóvel
    ============================================================ */
 function AddImovelModal({
-  open, onClose, ownerName, onSaved, ownerId
+  open, onClose, ownerName, onSaved, ownerId, imovel,
 }: {
   open: boolean;
   onClose: () => void;
   ownerName: string;
   ownerId: number;
   onSaved: () => Promise<void> | void;
+  imovel?: Imovel; // se vier, edita
 }) {
   const preset = getImovelFormPreset();
   const [tab, setTab] = useState<"info" | "contratos" | "docs" | "fotos">("info");
 
-  // ----- FORM (com mais informações) -----
   const [form, setForm] = useState({
     end: "",
     tipo: preset.tipos[0]!,
     situacao: preset.situacoes[0]!,
     obs: "",
-
     cep: "",
     numero: "",
     complemento: "",
     bairro: "",
     cidade: "",
     uf: "SP",
-
     area: "",
     quartos: "",
     banheiros: "",
@@ -269,52 +271,70 @@ function AddImovelModal({
     anoConstrucao: "",
     iptu: "",
     condominio: "",
-    finalidade: "Aluguel", // Aluguel | Venda | Ambos
+    finalidade: "Aluguel",
     disponivelEm: "",
   });
 
-  // ----- DOCS -----
   const [docs, setDocs] = useState<File[]>([]);
   const fileDocsRef = useRef<HTMLInputElement | null>(null);
 
-  // ----- FOTOS (5 QUADRADOS) -----
   const MAX_SLOTS = 5;
-  const [fotoSlots, setFotoSlots] = useState<(File | null)[]>(
-    Array(MAX_SLOTS).fill(null)
-  );
+  const [fotoSlots, setFotoSlots] = useState<(File | null)[]>(Array(MAX_SLOTS).fill(null));
   const fotoRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => {
     if (open) {
       setTab("info");
-      setForm((_) => ({
-        end: "",
-        tipo: preset.tipos[0]!,
-        situacao: preset.situacoes[0]!,
-        obs: "",
-
-        cep: "",
-        numero: "",
-        complemento: "",
-        bairro: "",
-        cidade: "",
-        uf: "SP",
-
-        area: "",
-        quartos: "",
-        banheiros: "",
-        vagas: "",
-        anoConstrucao: "",
-        iptu: "",
-        condominio: "",
-        finalidade: "Aluguel",
-        disponivelEm: "",
-      }));
+      if (imovel) {
+        setForm({
+          end: imovel.end ?? "",
+          tipo: String(imovel.tipo ?? preset.tipos[0]),
+          situacao: String(imovel.situacao ?? preset.situacoes[0]),
+          obs: imovel.obs ?? "",
+          cep: imovel.cep ?? "",
+          numero: imovel.numero ?? "",
+          complemento: imovel.complemento ?? "",
+          bairro: imovel.bairro ?? "",
+          cidade: imovel.cidade ?? "",
+          uf: imovel.uf ?? "SP",
+          area: String(imovel.area ?? ""),
+          quartos: String(imovel.quartos ?? ""),
+          banheiros: String(imovel.banheiros ?? ""),
+          vagas: String(imovel.vagas ?? ""),
+          anoConstrucao: String(imovel.anoConstrucao ?? ""),
+          iptu: String(imovel.iptu ?? ""),
+          condominio: String(imovel.condominio ?? ""),
+          finalidade: String(imovel.finalidade ?? "Aluguel"),
+          disponivelEm: imovel.disponivelEm ?? "",
+        });
+      } else {
+        setForm({
+          end: "",
+          tipo: preset.tipos[0]!,
+          situacao: preset.situacoes[0]!,
+          obs: "",
+          cep: "",
+          numero: "",
+          complemento: "",
+          bairro: "",
+          cidade: "",
+          uf: "SP",
+          area: "",
+          quartos: "",
+          banheiros: "",
+          vagas: "",
+          anoConstrucao: "",
+          iptu: "",
+          condominio: "",
+          finalidade: "Aluguel",
+          disponivelEm: "",
+        });
+      }
       setDocs([]);
       setFotoSlots(Array(MAX_SLOTS).fill(null));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, imovel]);
 
   if (!open) return null;
 
@@ -330,14 +350,12 @@ function AddImovelModal({
       tipo: base.tipo ?? p.tipo,
       situacao: base.situacao ?? p.situacao,
       obs: base.obs ?? "",
-
       cep: `${r(10, 99)}${r(100, 999)}-${r(100, 999)}`.slice(0, 9),
       numero: String(r(10, 9999)),
       complemento: Math.random() < 0.4 ? "Apto " + r(11, 120) : "",
       bairro: "Centro",
       cidade: "São Paulo",
       uf: "SP",
-
       area: String(r(35, 280)),
       quartos: String(r(1, 5)),
       banheiros: String(r(1, 4)),
@@ -350,70 +368,45 @@ function AddImovelModal({
     }));
   }
 
-  function handlePickFoto(i: number) {
-    fotoRefs.current[i]?.click();
-  }
   function handleChangeFoto(i: number, e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
-    setFotoSlots((arr) => {
-      const cp = arr.slice();
-      cp[i] = file;
-      return cp;
-    });
+    setFotoSlots((arr) => { const cp = arr.slice(); cp[i] = file; return cp; });
   }
   function removerFoto(i: number) {
-    setFotoSlots((arr) => {
-      const cp = arr.slice();
-      cp[i] = null;
-      return cp;
-    });
+    setFotoSlots((arr) => { const cp = arr.slice(); cp[i] = null; return cp; });
     if (fotoRefs.current[i]) fotoRefs.current[i]!.value = "";
   }
 
-    async function salvar() {
+  async function salvar() {
     try {
-        if (!form.end.trim()) return alert("Informe o endereço.");
+      if (!form.end.trim()) return alert("Informe o endereço.");
+      const payload = {
+        end: form.end, tipo: form.tipo, situacao: form.situacao, obs: form.obs,
+        finalidade: form.finalidade, cep: form.cep, numero: form.numero, complemento: form.complemento,
+        bairro: form.bairro, cidade: form.cidade, uf: form.uf, area: form.area, quartos: form.quartos,
+        banheiros: form.banheiros, vagas: form.vagas, iptu: form.iptu, condominio: form.condominio,
+        anoConstrucao: form.anoConstrucao, disponivelEm: form.disponivelEm,
+      };
 
-        await createImovel(ownerId, {
-        end: form.end,
-        tipo: form.tipo,
-        situacao: form.situacao,
-        obs: form.obs,
+      if (imovel?.id) await updateImovel(imovel.id, payload);
+      else await createImovel(ownerId, payload);
 
-        finalidade: form.finalidade,
-        cep: form.cep,
-        numero: form.numero,
-        complemento: form.complemento,
-        bairro: form.bairro,
-        cidade: form.cidade,
-        uf: form.uf,
+      // upload opcional de docs/fotos (se backend existir)
+      // try { ... FormData ... POST /imoveis/:id/docs } catch {}
 
-        area: form.area,
-        quartos: form.quartos,
-        banheiros: form.banheiros,
-        vagas: form.vagas,
-
-        iptu: form.iptu,
-        condominio: form.condominio,
-
-        anoConstrucao: form.anoConstrucao,
-        disponivelEm: form.disponivelEm, // yyyy-MM-dd
-        });
-
-        await onSaved();
-        onClose();
+      await onSaved();
+      onClose();
     } catch (e: any) {
-        alert(`Falha ao criar imóvel.\n${e?.message ?? e}`);
+      alert(`Falha ao salvar imóvel.\n${e?.message ?? e}`);
     }
-    }
-
+  }
 
   return (
     <div className="backdrop" onClick={(e) => e.currentTarget === e.target && onClose()}>
       <div className="small-modal" role="dialog" aria-modal="true">
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-          <h3 className="confirm-title" style={{ margin: 0 }}>Adicionar imóvel •</h3>
+          <h3 className="confirm-title" style={{ margin: 0 }}>{imovel ? "Editar imóvel" : "Adicionar imóvel"} •</h3>
           <div className="k" style={{ fontWeight: 700 }}>{ownerName}</div>
           <div style={{ marginLeft: "auto" }}>
             <button className="btn micro" onClick={onClose}>Fechar</button>
@@ -432,7 +425,6 @@ function AddImovelModal({
         <div className="modal-content">
           {tab === "info" && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              {/* Endereço + Tipo */}
               <div>
                 <div className="k">ENDEREÇO</div>
                 <input className="input" placeholder="Ex.: Rua ABC, 123 - Centro"
@@ -445,7 +437,6 @@ function AddImovelModal({
                 </select>
               </div>
 
-              {/* Situação + Finalidade */}
               <div>
                 <div className="k">SITUAÇÃO</div>
                 <select className="input" value={form.situacao} onChange={(e) => set("situacao", e.target.value)}>
@@ -455,35 +446,16 @@ function AddImovelModal({
               <div>
                 <div className="k">FINALIDADE</div>
                 <select className="input" value={form.finalidade} onChange={(e) => set("finalidade", e.target.value as any)}>
-                  <option>Aluguel</option>
-                  <option>Venda</option>
-                  <option>Ambos</option>
+                  <option>Aluguel</option><option>Venda</option><option>Ambos</option>
                 </select>
               </div>
 
-              {/* CEP / Número / Complemento */}
-              <div>
-                <div className="k">CEP</div>
-                <input className="input" placeholder="00000-000" value={form.cep} onChange={(e) => set("cep", e.target.value)} />
-              </div>
-              <div>
-                <div className="k">NÚMERO</div>
-                <input className="input" placeholder="Ex.: 123" value={form.numero} onChange={(e) => set("numero", e.target.value)} />
-              </div>
-              <div>
-                <div className="k">COMPLEMENTO</div>
-                <input className="input" placeholder="Apto / Bloco / Casa" value={form.complemento} onChange={(e) => set("complemento", e.target.value)} />
-              </div>
-              <div>
-                <div className="k">BAIRRO</div>
-                <input className="input" placeholder="Ex.: Centro" value={form.bairro} onChange={(e) => set("bairro", e.target.value)} />
-              </div>
+              <div><div className="k">CEP</div><input className="input" placeholder="00000-000" value={form.cep} onChange={(e) => set("cep", e.target.value)} /></div>
+              <div><div className="k">NÚMERO</div><input className="input" placeholder="Ex.: 123" value={form.numero} onChange={(e) => set("numero", e.target.value)} /></div>
+              <div><div className="k">COMPLEMENTO</div><input className="input" placeholder="Apto / Bloco / Casa" value={form.complemento} onChange={(e) => set("complemento", e.target.value)} /></div>
+              <div><div className="k">BAIRRO</div><input className="input" placeholder="Ex.: Centro" value={form.bairro} onChange={(e) => set("bairro", e.target.value)} /></div>
 
-              {/* Cidade / UF */}
-              <div>
-                <div className="k">CIDADE</div>
-                <input className="input" placeholder="Ex.: São Paulo" value={form.cidade} onChange={(e) => set("cidade", e.target.value)} />
-              </div>
+              <div><div className="k">CIDADE</div><input className="input" placeholder="Ex.: São Paulo" value={form.cidade} onChange={(e) => set("cidade", e.target.value)} /></div>
               <div>
                 <div className="k">UF</div>
                 <select className="input" value={form.uf} onChange={(e) => set("uf", e.target.value)}>
@@ -491,43 +463,16 @@ function AddImovelModal({
                 </select>
               </div>
 
-              {/* Métricas */}
-              <div>
-                <div className="k">ÁREA (m²)</div>
-                <input className="input" placeholder="Ex.: 120" value={form.area} onChange={(e) => set("area", e.target.value)} />
-              </div>
-              <div>
-                <div className="k">QUARTOS</div>
-                <input className="input" placeholder="Ex.: 3" value={form.quartos} onChange={(e) => set("quartos", e.target.value)} />
-              </div>
-              <div>
-                <div className="k">BANHEIROS</div>
-                <input className="input" placeholder="Ex.: 2" value={form.banheiros} onChange={(e) => set("banheiros", e.target.value)} />
-              </div>
-              <div>
-                <div className="k">VAGAS</div>
-                <input className="input" placeholder="Ex.: 1" value={form.vagas} onChange={(e) => set("vagas", e.target.value)} />
-              </div>
+              <div><div className="k">ÁREA (m²)</div><input className="input" placeholder="Ex.: 120" value={form.area} onChange={(e) => set("area", e.target.value)} /></div>
+              <div><div className="k">QUARTOS</div><input className="input" placeholder="Ex.: 3" value={form.quartos} onChange={(e) => set("quartos", e.target.value)} /></div>
+              <div><div className="k">BANHEIROS</div><input className="input" placeholder="Ex.: 2" value={form.banheiros} onChange={(e) => set("banheiros", e.target.value)} /></div>
+              <div><div className="k">VAGAS</div><input className="input" placeholder="Ex.: 1" value={form.vagas} onChange={(e) => set("vagas", e.target.value)} /></div>
 
-              {/* Financeiro / Datas */}
-              <div>
-                <div className="k">IPTU (R$/mês)</div>
-                <input className="input" placeholder="Ex.: 120" value={form.iptu} onChange={(e) => set("iptu", e.target.value)} />
-              </div>
-              <div>
-                <div className="k">CONDOMÍNIO (R$/mês)</div>
-                <input className="input" placeholder="Ex.: 450" value={form.condominio} onChange={(e) => set("condominio", e.target.value)} />
-              </div>
-              <div>
-                <div className="k">ANO DE CONSTRUÇÃO</div>
-                <input className="input" placeholder="Ex.: 2005" value={form.anoConstrucao} onChange={(e) => set("anoConstrucao", e.target.value)} />
-              </div>
-              <div>
-                <div className="k">DISPONÍVEL A PARTIR DE</div>
-                <input className="input" type="date" value={form.disponivelEm} onChange={(e) => set("disponivelEm", e.target.value)} />
-              </div>
+              <div><div className="k">IPTU (R$/mês)</div><input className="input" placeholder="Ex.: 120" value={form.iptu} onChange={(e) => set("iptu", e.target.value)} /></div>
+              <div><div className="k">CONDOMÍNIO (R$/mês)</div><input className="input" placeholder="Ex.: 450" value={form.condominio} onChange={(e) => set("condominio", e.target.value)} /></div>
+              <div><div className="k">ANO DE CONSTRUÇÃO</div><input className="input" placeholder="Ex.: 2005" value={form.anoConstrucao} onChange={(e) => set("anoConstrucao", e.target.value)} /></div>
+              <div><div className="k">DISPONÍVEL A PARTIR DE</div><input className="input" type="date" value={form.disponivelEm} onChange={(e) => set("disponivelEm", e.target.value)} /></div>
 
-              {/* Observações */}
               <div style={{ gridColumn: "1 / -1" }}>
                 <div className="k">OBSERVAÇÕES</div>
                 <textarea className="input" rows={4} placeholder="Notas internas..." value={form.obs} onChange={(e) => set("obs", e.target.value)} />
@@ -541,30 +486,18 @@ function AddImovelModal({
                 (Opcional) Integração de contratos vai aqui. Por enquanto, apenas informativo.
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                <div>
-                  <div className="k">NÚMERO DO CONTRATO</div>
-                  <input className="input" placeholder="Ex.: 2025-001 (opcional)" />
-                </div>
-                <div>
-                  <div className="k">VALOR</div>
-                  <input className="input" placeholder="Ex.: R$ 2.500,00 (opcional)" />
-                </div>
-                <div>
-                  <div className="k">INÍCIO</div>
-                  <input className="input" type="date" />
-                </div>
-                <div>
-                  <div className="k">FIM</div>
-                  <input className="input" type="date" />
-                </div>
+                <div><div className="k">NÚMERO DO CONTRATO</div><input className="input" placeholder="Ex.: 2025-001 (opcional)" /></div>
+                <div><div className="k">VALOR</div><input className="input" placeholder="Ex.: R$ 2.500,00 (opcional)" /></div>
+                <div><div className="k">INÍCIO</div><input className="input" type="date" /></div>
+                <div><div className="k">FIM</div><input className="input" type="date" /></div>
               </div>
             </div>
           )}
 
           {tab === "docs" && (
             <div>
-              <div className="k" style={{ marginBottom: 8 }}>Selecione arquivos de documentos (PDF/Imagens).</div>
-              <input ref={fileDocsRef} type="file" multiple onChange={(e) => setDocs(Array.from(e.target.files ?? []))} />
+              <div className="k" style={{ marginBottom: 8 }}>Selecione arquivos (PDF/Imagens).</div>
+              <input ref={fileDocsRef} type="file" accept=".pdf,image/*" multiple onChange={(e) => setDocs(Array.from(e.target.files ?? []))} />
               <div className="k" style={{ marginTop: 8 }}>{docs.length} arquivo(s) selecionado(s).</div>
             </div>
           )}
@@ -572,65 +505,38 @@ function AddImovelModal({
           {tab === "fotos" && (
             <div>
               <div className="k" style={{ marginBottom: 10 }}>Adicione até 5 fotos. Clique em cada quadrado para escolher.</div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(5, 1fr)",
-                  gap: 10,
-                }}
-              >
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
                 {Array.from({ length: MAX_SLOTS }).map((_, i) => {
                   const file = fotoSlots[i];
                   const preview = file ? URL.createObjectURL(file) : null;
                   return (
                     <div key={i} style={{
-                      position: "relative",
-                      width: "100%",
-                      aspectRatio: "1/1",
-                      border: "1px dashed #cbd5e1",
-                      borderRadius: 12,
-                      background: "#f8fafc",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      overflow: "hidden",
-                      cursor: "pointer"
+                      position: "relative", width: "100%", aspectRatio: "1/1",
+                      border: "1px dashed #cbd5e1", borderRadius: 12, background: "#f8fafc",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      overflow: "hidden", cursor: "pointer"
                     }}
-                      onClick={() => handlePickFoto(i)}
+                      onClick={() => fotoRefs.current[i]?.click()}
                       title={file ? "Trocar foto" : "Selecionar foto"}
                     >
                       {preview ? (
-                        <img
-                          src={preview}
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                          onLoad={() => URL.revokeObjectURL(preview)}
-                        />
+                        <img src={preview} style={{ width: "100%", height: "100%", objectFit: "cover" }} onLoad={() => URL.revokeObjectURL(preview)} />
                       ) : (
-                        <div className="k" style={{ textAlign: "center" }}>
-                          + Foto {i + 1}
-                        </div>
+                        <div className="k" style={{ textAlign: "center" }}>+ Foto {i + 1}</div>
                       )}
 
                       {file && (
-                        <button
-                          className="btn micro"
-                          style={{ position: "absolute", top: 8, right: 8 }}
-                          onClick={(e) => { e.stopPropagation(); removerFoto(i); }}
-                        >
+                        <button className="btn micro" style={{ position: "absolute", top: 8, right: 8 }}
+                          onClick={(e) => { e.stopPropagation(); removerFoto(i); }}>
                           Remover
                         </button>
                       )}
 
-                        <input
-                        ref={(el: HTMLInputElement | null) => {
-                            if (el) fotoRefs.current[i] = el;
-                        }}
-                        type="file"
-                        accept="image/*"
-                        hidden
+                      <input
+                        ref={(el: HTMLInputElement | null) => { if (el) fotoRefs.current[i] = el; }}
+                        type="file" accept="image/*" hidden
                         onChange={(e) => handleChangeFoto(i, e)}
-                        />
+                      />
                     </div>
                   );
                 })}
@@ -642,7 +548,7 @@ function AddImovelModal({
         {/* Footer */}
         <div className="confirm-actions">
           <button className="btn micro lead" onClick={randomize}>Randomizar (DEBUG)</button>
-          <button className="btn micro primary" onClick={salvar}>Concluir</button>
+          <button className="btn micro primary" onClick={salvar}>{imovel ? "Salvar alterações" : "Concluir"}</button>
           <button className="btn micro" onClick={onClose}>Cancelar</button>
         </div>
       </div>
@@ -650,12 +556,213 @@ function AddImovelModal({
   );
 }
 
+/* ============================================================
+   Tela de Detalhe do Imóvel
+   ============================================================ */
+function ImovelDetailView({
+  owner, imovelId, slug
+}: {
+  owner: Proprietario;
+  imovelId: number;
+  slug: string;
+}) {
+  const nav = useNavigate();
+  const [imovel, setImovel] = useState<Imovel | null | undefined>(undefined);
+  const [editOpen, setEditOpen] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const dto = await getImovel(imovelId);
+        setImovel(dto);
+      } catch (e) {
+        console.error(e);
+        setImovel(null);
+      }
+    })();
+  }, [imovelId]);
+
+  return (
+    <div className="page">
+      <style>{css}</style>
+
+      <div className="header">
+        <div className="breadcrumb">
+          <Link to="/dashboard">Dashboard</Link> /{" "}
+          <Link to="/proprietarios">Proprietários</Link> /{" "}
+          <Link to={`/proprietarios/${slug}`}>{owner?.nome ?? "Proprietário"}</Link> /{" "}
+          <span className="breadcrumb-active">Imóvel</span>
+        </div>
+        <div />
+      </div>
+
+      {imovel === undefined ? (
+        <section className="card">
+          <div className="body" style={{ color: "#64748b" }}>Carregando...</div>
+        </section>
+      ) : imovel === null ? (
+        <section className="card">
+          <div className="body" style={{ color: "#64748b" }}>Imóvel não encontrado.</div>
+        </section>
+      ) : (
+        <section className="card">
+          <div className="cardhead">
+            <div style={{ flex: 1 }}>
+              <div className="backline">
+                <button className="backbtn" onClick={() => nav(-1)} title="Voltar">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M15 19l-7-7 7-7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Voltar
+                </button>
+              </div>
+              <h2>{imovel.end || `Imóvel #${imovelId}`}</h2>
+              <div style={{ color: "#64748b" }}>
+                {imovel.tipo || "-"} · {imovel.situacao || "-"}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="fixedbtn" onClick={() => setEditOpen(true)}>Editar</button>
+            </div>
+          </div>
+
+          <div className="tabbar">
+            <a className="tab active">Informações</a>
+            <a className="tab">Documentos</a>
+            <a className="tab">Fotos</a>
+          </div>
+
+          <div className="body">
+            <div className="grid2">
+              <div>
+                <div className="k">ENDEREÇO</div>
+                <div className="v">{imovel.end || "-"}</div>
+              </div>
+              <div>
+                <div className="k">TIPO</div>
+                <div className="v">{imovel.tipo || "-"}</div>
+              </div>
+              <div>
+                <div className="k">SITUAÇÃO</div>
+                <div className="v">{imovel.situacao || "-"}</div>
+              </div>
+              <div>
+                <div className="k">FINALIDADE</div>
+                <div className="v">{imovel.finalidade || "-"}</div>
+              </div>
+
+              <div>
+                <div className="k">CEP</div>
+                <div className="v">{imovel.cep || "-"}</div>
+              </div>
+              <div>
+                <div className="k">NÚMERO</div>
+                <div className="v">{imovel.numero || "-"}</div>
+              </div>
+              <div>
+                <div className="k">COMPLEMENTO</div>
+                <div className="v">{imovel.complemento || "-"}</div>
+              </div>
+              <div>
+                <div className="k">BAIRRO</div>
+                <div className="v">{imovel.bairro || "-"}</div>
+              </div>
+
+              <div>
+                <div className="k">CIDADE</div>
+                <div className="v">{imovel.cidade || "-"}</div>
+              </div>
+              <div>
+                <div className="k">UF</div>
+                <div className="v">{imovel.uf || "-"}</div>
+              </div>
+
+              <div>
+                <div className="k">ÁREA (m²)</div>
+                <div className="v">{imovel.area ?? "-"}</div>
+              </div>
+              <div>
+                <div className="k">QUARTOS</div>
+                <div className="v">{imovel.quartos ?? "-"}</div>
+              </div>
+              <div>
+                <div className="k">BANHEIROS</div>
+                <div className="v">{imovel.banheiros ?? "-"}</div>
+              </div>
+              <div>
+                <div className="k">VAGAS</div>
+                <div className="v">{imovel.vagas ?? "-"}</div>
+              </div>
+
+              <div>
+                <div className="k">IPTU (R$/mês)</div>
+                <div className="v">{imovel.iptu ?? "-"}</div>
+              </div>
+              <div>
+                <div className="k">CONDOMÍNIO (R$/mês)</div>
+                <div className="v">{imovel.condominio ?? "-"}</div>
+              </div>
+              <div>
+                <div className="k">ANO DE CONSTRUÇÃO</div>
+                <div className="v">{imovel.anoConstrucao ?? "-"}</div>
+              </div>
+              <div>
+                <div className="k">DISPONÍVEL A PARTIR DE</div>
+                <div className="v">{imovel.disponivelEm || "-"}</div>
+              </div>
+
+              <div style={{ gridColumn: "1 / -1" }}>
+                <div className="k">OBSERVAÇÕES</div>
+                <div className="v">{imovel.obs || "-"}</div>
+              </div>
+            </div>
+
+            {/* seção de documentos */}
+            <div style={{ marginTop: 18 }}>
+              <div className="k" style={{ marginBottom: 8 }}>Documentos (PDF/Imagens) — demonstração</div>
+              <input className="input" type="file" multiple accept=".pdf,image/*" />
+            </div>
+
+            {/* seção de fotos */}
+            <div style={{ marginTop: 18 }}>
+              <div className="k" style={{ marginBottom: 8 }}>Fotos (pré-visualização) — demonstração</div>
+              <div className="thumbgrid">
+                {/* placeholders/miniaturas futuras */}
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="thumb" />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {owner && (
+            <AddImovelModal
+              open={editOpen}
+              onClose={() => setEditOpen(false)}
+              ownerName={owner.nome}
+              ownerId={owner.id!}
+              imovel={imovel}
+              onSaved={async () => {
+                if (imovel?.id) {
+                  const novo = await getImovel(imovel.id);
+                  setImovel(novo);
+                }
+                setEditOpen(false);
+              }}
+            />
+          )}
+        </section>
+      )}
+    </div>
+  );
+}
 
 /* ============================================================
-   Página de Imóveis do Proprietário
+   Página de Imóveis do Proprietário (lista) — e decide se abre detalhe
    ============================================================ */
 export default function ImoveisPage() {
-  const { slug } = useParams(); // ex.: "Ana-Almeida-7"
+  const { slug } = useParams();
   const nav = useNavigate();
   const location = useLocation() as { state?: { owner?: Proprietario } };
 
@@ -672,6 +779,11 @@ export default function ImoveisPage() {
     const id = Number(parts[parts.length - 1]);
     return Number.isFinite(id) ? id : undefined;
   })();
+
+  // detecta se é rota de detalhe: /proprietarios/:slug/imoveis/:imovelId
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+  const match = pathname.match(/\/imoveis\/(\d+)(?:\/)?$/);
+  const imovelId = match ? Number(match[1]) : undefined;
 
   useEffect(() => {
     if (!slug || !ownerId) {
@@ -696,6 +808,11 @@ export default function ImoveisPage() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, ownerId]);
+
+  // Se há imovelId na rota -> abre tela de detalhe
+  if (imovelId && owner) {
+    return <ImovelDetailView owner={owner} imovelId={imovelId} slug={slug!} />;
+  }
 
   const filtrados = useMemo(() => {
     const w = q.trim().toLowerCase();
@@ -740,7 +857,6 @@ export default function ImoveisPage() {
         <div className="cardhead">
           <div>
             <div className="backline">
-              {/* back para a tela anterior (igual ao detalhe) */}
               <button className="backbtn" onClick={() => nav(-1)} title="Voltar">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path d="M15 19l-7-7 7-7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
@@ -752,18 +868,15 @@ export default function ImoveisPage() {
             <p>Gerencie os imóveis vinculados a este proprietário.</p>
           </div>
 
-          {/* Botão no MESMO lugar do "Adicionar proprietário" */}
           <button className="btn-add" onClick={() => setAddOpen(true)}>Adicionar imóvel</button>
         </div>
 
-        {/* Tabs iguais às do detalhe */}
         <div className="tabbar">
           <Link to={dadosHref} className="tab">Dados</Link>
           <span className="tab">Documentos</span>
           <Link to={imoveisHref} className="tab active">Imóveis</Link>
         </div>
 
-        {/* Filtro */}
         <div style={{ padding: "12px 18px" }}>
           <input className="input" placeholder="Buscar por endereço, tipo ou situação" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
@@ -791,8 +904,12 @@ export default function ImoveisPage() {
                     <td>{i.situacao || "-"}</td>
                     <td>
                       <div className="rowact">
-                        {/* Placeholder para detalhe do imóvel futuro */}
-                        <Link className="iconbtn" title="Abrir imóvel" to={imoveisHref}>
+                        <Link
+                          className="iconbtn"
+                          title="Abrir imóvel"
+                          to={`${imoveisHref}/${i.id}`}
+                          state={{ owner, imovel: i }}
+                        >
                           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor">
                             <path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
@@ -812,7 +929,6 @@ export default function ImoveisPage() {
         </div>
       </section>
 
-      {/* Confirmar exclusão */}
       {confirm.open && (
         <div className="backdrop" onClick={(e) => e.currentTarget === e.target && setConfirm({ open: false })}>
           <div className="small-modal" role="dialog" aria-modal="true">
@@ -826,7 +942,6 @@ export default function ImoveisPage() {
         </div>
       )}
 
-      {/* Modal de adicionar imóvel */}
       {addOpen && owner && ownerId && (
         <AddImovelModal
           open={addOpen}
@@ -839,6 +954,143 @@ export default function ImoveisPage() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+
+/* ============================================================
+   Página de Detalhe do Imóvel
+   ============================================================ */
+export function ImovelDetalheView() {
+  const { slug, imovelId } = useParams();
+  const nav = useNavigate();
+
+  const [imovel, setImovel] = useState<Imovel | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!imovelId) return;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/imoveis/${imovelId}`);
+        if (!res.ok) throw new Error("Erro ao buscar imóvel");
+        const dto = await res.json();
+        setImovel({ ...dto, end: dto.endereco ?? dto.end ?? null });
+      } catch (e) {
+        console.error(e);
+        setImovel(null);
+      }
+    })();
+  }, [imovelId]);
+
+  if (imovel === undefined) {
+    return <div className="p-4">Carregando...</div>;
+  }
+  if (imovel === null) {
+    return <div className="p-4">Imóvel não encontrado.</div>;
+  }
+
+  const base = `/proprietarios/${slug}/imoveis/${imovelId}`;
+  const isDocs = location.pathname.endsWith("/docs");
+  const isFotos = location.pathname.endsWith("/fotos");
+
+  return (
+    <div className="page">
+      <style>{css}</style>
+
+      <div className="header">
+        <div className="breadcrumb">
+          <Link to="/dashboard">Dashboard</Link> /{" "}
+          <Link to="/proprietarios">Proprietários</Link> /{" "}
+          <Link to={`/proprietarios/${slug}/imoveis`}>Imóveis</Link> /{" "}
+          <span className="breadcrumb-active">Detalhe</span>
+        </div>
+        <div />
+      </div>
+
+      <section className="card">
+        <div className="cardhead">
+          <div>
+            <div className="backline">
+              <button className="backbtn" onClick={() => nav(-1)} title="Voltar">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                >
+                  <path
+                    d="M15 19l-7-7 7-7"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                Voltar
+              </button>
+            </div>
+            <h2>{imovel.end || "Imóvel"}</h2>
+            <p style={{ color: "#64748b" }}>{imovel.tipo ?? "-"} · {imovel.situacao ?? "-"}</p>
+          </div>
+        </div>
+
+        {/* Tabs iguais ao proprietário */}
+        <div className="tabbar">
+          <Link to={base} className={`tab ${!isDocs && !isFotos ? "active" : ""}`}>
+            Informações
+          </Link>
+          <Link to={`${base}/docs`} className={`tab ${isDocs ? "active" : ""}`}>
+            Documentos
+          </Link>
+          <Link to={`${base}/fotos`} className={`tab ${isFotos ? "active" : ""}`}>
+            Fotos
+          </Link>
+        </div>
+
+        <div className="body">
+          {/* Aba Informações */}
+          {!isDocs && !isFotos && (
+            <div className="grid">
+              <div>
+                <div className="k">ENDEREÇO</div>
+                <div className="v">{imovel.end || "-"}</div>
+              </div>
+              <div>
+                <div className="k">TIPO</div>
+                <div className="v">{imovel.tipo || "-"}</div>
+              </div>
+              <div>
+                <div className="k">SITUAÇÃO</div>
+                <div className="v">{imovel.situacao || "-"}</div>
+              </div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <div className="k">OBSERVAÇÕES</div>
+                <div className="v">{imovel.obs || "-"}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Aba Documentos */}
+          {isDocs && (
+            <div>
+              <p className="k">Upload de documentos (PDF/Imagens)</p>
+              <input type="file" multiple />
+            </div>
+          )}
+
+          {/* Aba Fotos */}
+          {isFotos && (
+            <div>
+              <p className="k">Fotos do imóvel</p>
+              <div className="thumbgrid">
+                {/* depois você pode integrar upload */}
+                <div className="k">[upload de fotos aqui]</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

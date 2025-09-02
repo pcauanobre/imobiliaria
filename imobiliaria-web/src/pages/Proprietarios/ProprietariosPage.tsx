@@ -1,7 +1,7 @@
 // pages/Proprietarios/ProprietariosPage.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
-import ImoveisPage from "./Imoveis";  // 👈 mantém
+import ImoveisPage from "./ImoveisPage";  // 👈 mantém
 
 /* ============================================================
    CSS (no mesmo arquivo)
@@ -196,6 +196,47 @@ const css = `
 }
 .fixedbtn:hover { background:#1C2541; }
 
+/* ===== Bolinha vermelha (badge) no botão da lista ===== */
+.badge-dot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  background: #ef4444;
+  border-radius: 999px;
+  border: 2px solid #fff;
+}
+
+/* ===== Ícone triangular de alerta grande ===== */
+.warn-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #fee2e2;
+  background: #fff5f5;
+  color: #ef4444;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-left: 8px; /* espaço entre o nome e o ícone */
+}
+.warn-icon:hover {
+  filter: brightness(0.95);
+}
+
+/* ===== Popup "o que está faltando" ===== */
+.missing-list{ margin:10px 0 0; padding-left:18px; }
+.missing-list li{ margin:6px 0; }
+
+/* ===== Efeito de destaque leve no input alvo ===== */
+@keyframes flashOnce {
+  0% { box-shadow:0 0 0 0 rgba(239,68,68,0.00) }
+  20%{ box-shadow:0 0 0 4px rgba(239,68,68,0.20) }
+  100%{ box-shadow:0 0 0 0 rgba(239,68,68,0.00) }
+}
+.flash-once{ animation: flashOnce 1.1s ease-out 1 }
 `
 
 
@@ -221,6 +262,28 @@ function formatDoc(doc?: string | null) {
   if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
   if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
   return doc ?? "-";
+}
+
+/* ===== Regras do "incompleto" ===== */
+const FIELD_LABEL: Record<keyof Proprietario, string> = {
+  id: "ID",
+  nome: "Nome",
+  doc: "CPF/CNPJ",
+  email: "E-mail",
+  tel: "Telefone",
+  obs: "Observações",
+};
+
+function camposVazios(p?: Proprietario | null) {
+  if (!p) return [] as (keyof Proprietario)[];
+  const faltando: (keyof Proprietario)[] = [];
+  (["nome", "doc", "email", "tel"] as (keyof Proprietario)[]).forEach((k) => {
+    const v = (p as any)[k];
+    if (v == null || String(v).trim() === "") faltando.push(k);
+  });
+  // se quiser considerar obs também, descomente:
+  // if (!p.obs || p.obs.trim() === "") faltando.push("obs");
+  return faltando;
 }
 
 /* Helpers para Randomizar (DEBUG) */
@@ -293,12 +356,14 @@ function AddProprietarioModal({
   open,
   onClose,
   onSaved,
-  proprietario, // ⚡ prop nova: proprietário existente para edição
+  proprietario,           // ⚡ prop nova: proprietário existente para edição
+  initialFocusField,      // ⚡ novo: campo para focar e "piscar"
 }: {
   open: boolean;
   onClose: () => void;
   onSaved: () => Promise<void> | void;
   proprietario?: Proprietario;
+  initialFocusField?: keyof Proprietario;
 }) {
   const [form, setForm] = useState<Proprietario>({
     nome: "",
@@ -309,15 +374,42 @@ function AddProprietarioModal({
   });
   const nav = useNavigate();
 
+
+  const inputRefs = useRef<{
+    id: HTMLInputElement | null;
+    nome: HTMLInputElement | null;
+    doc: HTMLInputElement | null;
+    email: HTMLInputElement | null;
+    tel: HTMLInputElement | null;
+    obs: HTMLTextAreaElement | null;
+  }>({
+    id: null,
+    nome: null,
+    doc: null,
+    email: null,
+    tel: null,
+    obs: null,
+  });
+
+  function focusAndFlash(field?: keyof Proprietario) {
+    if (!field) return;
+    const el = inputRefs.current[field];
+    if (el) {
+      el.focus();
+      el.classList.remove("flash-once");
+      void (el as any).offsetWidth; // força reflow
+      el.classList.add("flash-once");
+    }
+  }
+
   useEffect(() => {
     if (open) {
-      if (proprietario) {
-        setForm(proprietario); // preenche com dados existentes para edição
-      } else {
-        setForm({ nome: "", doc: "", email: "", tel: "", obs: "" });
-      }
+      if (proprietario) setForm(proprietario);
+      else setForm({ nome: "", doc: "", email: "", tel: "", obs: "" });
+      setTimeout(() => focusAndFlash(initialFocusField), 50);
     }
-  }, [open, proprietario]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, proprietario, initialFocusField]);
 
   if (!open) return null;
 
@@ -367,7 +459,6 @@ function AddProprietarioModal({
     }
   }
 
-
   return (
     <div className="backdrop" onClick={(e) => e.currentTarget === e.target && onClose()}>
       <div className="small-modal" role="dialog" aria-modal="true">
@@ -377,6 +468,8 @@ function AddProprietarioModal({
           <div>
             <div className="k">NOME</div>
             <input
+              id="owner-nome"
+              ref={(el: HTMLInputElement | null) => { inputRefs.current.nome = el; }}
               className="input"
               placeholder="Ex.: Ana Souza"
               value={form.nome}
@@ -386,6 +479,8 @@ function AddProprietarioModal({
           <div>
             <div className="k">CPF/CNPJ</div>
             <input
+              id="owner-doc"
+              ref={(el: HTMLInputElement | null) => { inputRefs.current.doc = el; }}
               className="input"
               placeholder="Somente números"
               value={form.doc}
@@ -395,6 +490,8 @@ function AddProprietarioModal({
           <div>
             <div className="k">E-MAIL</div>
             <input
+              id="owner-email"
+              ref={(el: HTMLInputElement | null) => { inputRefs.current.email = el; }}
               className="input"
               placeholder="email@dominio.com"
               type="email"
@@ -405,6 +502,8 @@ function AddProprietarioModal({
           <div>
             <div className="k">TELEFONE</div>
             <input
+              id="owner-tel"
+              ref={(el: HTMLInputElement | null) => { inputRefs.current.tel = el; }}
               className="input"
               placeholder="(xx) 9xxxx-xxxx"
               value={form.tel ?? ""}
@@ -414,6 +513,8 @@ function AddProprietarioModal({
           <div style={{ gridColumn: "1 / -1" }}>
             <div className="k">OBSERVAÇÕES</div>
             <textarea
+              id="owner-obs"
+              ref={(el: HTMLTextAreaElement | null) => { inputRefs.current.obs = el; }}
               className="input"
               rows={4}
               placeholder="Notas internas..."
@@ -438,7 +539,6 @@ function AddProprietarioModal({
     </div>
   );
 }
-
 
 function ConfirmDeleteDialog({
   open, onClose, onConfirm,
@@ -470,6 +570,42 @@ function SuccessDialog({ open, onClose, message = "Excluído com sucesso." }: { 
         <h3 className="confirm-title">✅ Sucesso</h3>
         <p className="confirm-text">{message}</p>
         <div className="confirm-actions"><button className="btn primary" onClick={onClose}>OK</button></div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   POPUP: lista de informações faltando
+   ============================================================ */
+function MissingInfoDialog({
+  open, onClose, faltando, onGoTo
+}: {
+  open: boolean;
+  onClose: () => void;
+  faltando: (keyof Proprietario)[];
+  onGoTo: (field: keyof Proprietario) => void;
+}) {
+  if (!open) return null;
+  return (
+    <div className="backdrop" onClick={(e) => e.currentTarget === e.target && onClose()}>
+      <div className="small-modal" role="dialog" aria-modal="true">
+        <h3 className="confirm-title">Informações faltando</h3>
+        <p className="confirm-text">Alguns dados não foram informados. Clique para ir direto ao campo:</p>
+        <ul className="missing-list">
+          {faltando.map((k) => (
+            <li key={k}>
+              <button className="btn micro"
+                onClick={() => { onGoTo(k); onClose(); }}
+                style={{ marginTop: 4 }}>
+                Preencher {FIELD_LABEL[k]}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <div className="confirm-actions">
+          <button className="btn micro" onClick={onClose}>Fechar</button>
+        </div>
       </div>
     </div>
   );
@@ -566,8 +702,10 @@ function ProprietariosListView() {
                         className="btn micro"
                         to={`/proprietarios/${slugify(o.nome, o.id)}`}
                         state={{ owner: o }}
+                        style={{ position: "relative", display: "inline-block" }}
                       >
-                        {o.nome}
+                        {o.nome || "(sem nome)"}
+                        {camposVazios(o).length > 0 && <span className="badge-dot" />}
                       </Link>
                     </td>
                     <td>{formatDoc(o.doc)}</td>
@@ -636,6 +774,10 @@ function ProprietarioDetalheView() {
     location.state?.owner ?? undefined
   );
   const [editOpen, setEditOpen] = useState(false);
+
+  // popup + campo que deve receber o foco
+  const [missingOpen, setMissingOpen] = useState(false);
+  const [focusField, setFocusField] = useState<keyof Proprietario | undefined>(undefined);
 
   useEffect(() => {
     if (!slug) {
@@ -717,7 +859,23 @@ function ProprietarioDetalheView() {
                   Voltar
                 </Link>
               </div>
-              <h2>{owner.nome}</h2>
+              <h2 style={{ display: "flex", alignItems: "center" }}>
+                {owner.nome}
+                {camposVazios(owner).length > 0 && (
+                  <button
+                    className="warn-icon"
+                    title="Dados incompletos"
+                    onClick={() => setMissingOpen(true)}
+                  >
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor">
+                      <path d="M12 3l9 16H3L12 3z" strokeWidth="2" />
+                      <line x1="12" y1="9" x2="12" y2="13" strokeWidth="2" />
+                      <circle cx="12" cy="17" r="1.2" />
+                    </svg>
+                  </button>
+                )}
+              </h2>
+
               <div style={{ color: "#64748b" }}>
                 {formatDoc(owner.doc)} · 0 imóveis
               </div>
@@ -787,6 +945,17 @@ function ProprietarioDetalheView() {
               </div>
             </div>
           </div>
+
+          {/* Popup de faltantes */}
+          <MissingInfoDialog
+            open={missingOpen}
+            onClose={() => setMissingOpen(false)}
+            faltando={camposVazios(owner)}
+            onGoTo={(field) => {
+              setFocusField(field);   // qual input deve focar e piscar
+              setEditOpen(true);      // abre modal de edição
+            }}
+          />
         </section>
       )}
 
@@ -794,15 +963,17 @@ function ProprietarioDetalheView() {
       {owner && (
         <AddProprietarioModal
           open={editOpen}
-          onClose={() => setEditOpen(false)}
+          onClose={() => { setEditOpen(false); setFocusField(undefined); }}
           onSaved={async () => {
             if (owner.id) {
               const atualizado = await getProprietario(owner.id);
               setOwner(atualizado);
             }
             setEditOpen(false);
+            setFocusField(undefined);
           }}
           proprietario={owner}
+          initialFocusField={focusField}
         />
       )}
     </div>
@@ -820,8 +991,8 @@ export default function ProprietariosPage() {
 
   if (!slug) return <ProprietariosListView />;
 
-  if (location.pathname.endsWith("/imoveis")) {
-    return <ImoveisPage />; // 👈 chama a página de imóveis
+  if (location.pathname.includes("/imoveis")) {
+    return <ImoveisPage />;
   }
 
   return <ProprietarioDetalheView />;

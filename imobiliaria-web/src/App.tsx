@@ -1,3 +1,4 @@
+// App.tsx
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useContext } from "react";
 import { AuthContext } from "./providers/AuthProvider";
@@ -9,6 +10,7 @@ import LoginPage from "./pages/Login/LoginPage";
 import RegisterPage from "./pages/Register/RegisterPage";
 import DashboardPage from "./pages/Dashboard/DashboardPage";
 import ProprietariosPage from "./pages/Proprietarios/ProprietariosPage";
+import { ImovelDetalheView } from "./pages/Proprietarios/ImoveisPage"; // ⬅️ apenas o export nomeado
 
 function Private({ children }: { children: React.ReactNode }) {
   const ctx = useContext(AuthContext);
@@ -59,13 +61,25 @@ export default function App() {
             }
           />
 
-          {/* aba Imóveis (usa a mesma página para decidir o que renderizar) */}
+          {/* aba Imóveis (usa ProprietariosPage, que decide renderizar ImoveisPage internamente) */}
           <Route
             path="/proprietarios/:slug/imoveis"
             element={
               <Private>
                 <SidebarLayout>
-                  <ProprietariosPage/>
+                  <ProprietariosPage />
+                </SidebarLayout>
+              </Private>
+            }
+          />
+
+          {/* detalhe do imóvel */}
+          <Route
+            path="/proprietarios/:slug/imoveis/:imovelId"
+            element={
+              <Private>
+                <SidebarLayout>
+                  <ImovelDetalheView />
                 </SidebarLayout>
               </Private>
             }
