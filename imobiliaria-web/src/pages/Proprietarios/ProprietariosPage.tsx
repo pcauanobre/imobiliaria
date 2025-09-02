@@ -290,14 +290,34 @@ async function deleteProprietario(id: number): Promise<void> {
    Popups: Add Proprietário / Confirmar Exclusão / Sucesso
    ============================================================ */
 function AddProprietarioModal({
-  open, onClose, onSaved,
-}: { open: boolean; onClose: () => void; onSaved: () => Promise<void> | void }) {
-  const [form, setForm] = useState<Proprietario>({ nome: "", doc: "", email: "", tel: "", obs: "" });
+  open,
+  onClose,
+  onSaved,
+  proprietario, // ⚡ prop nova: proprietário existente para edição
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSaved: () => Promise<void> | void;
+  proprietario?: Proprietario;
+}) {
+  const [form, setForm] = useState<Proprietario>({
+    nome: "",
+    doc: "",
+    email: "",
+    tel: "",
+    obs: "",
+  });
   const nav = useNavigate();
 
   useEffect(() => {
-    if (open) setForm({ nome: "", doc: "", email: "", tel: "", obs: "" });
-  }, [open]);
+    if (open) {
+      if (proprietario) {
+        setForm(proprietario); // preenche com dados existentes para edição
+      } else {
+        setForm({ nome: "", doc: "", email: "", tel: "", obs: "" });
+      }
+    }
+  }, [open, proprietario]);
 
   if (!open) return null;
 
@@ -316,23 +336,42 @@ function AddProprietarioModal({
 
   async function salvar() {
     try {
-      if (!form.nome.trim()) return alert("Informe o nome.");
-      if (!form.doc.trim()) return alert("Informe CPF/CNPJ.");
-      const novo = await createProprietario(form);
+      // Permitir campos vazios
+      const payload: Proprietario = {
+        nome: form.nome?.trim() || "",
+        doc: (form.doc ?? "").replace(/\D/g, "") || "",
+        email: form.email?.trim() || null,
+        tel: form.tel?.trim() || null,
+        obs: form.obs?.trim() || null,
+      };
+
+      if (proprietario?.id) {
+        // Edição -> PUT
+        const res = await fetch(`${API_BASE}/api/v1/proprietarios/${proprietario.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error(await res.text());
+      } else {
+        // Criação -> POST
+        const novo = await createProprietario(payload);
+        const slug = `${encodeURIComponent(novo.nome.replace(/\s+/g, "-"))}-${novo.id}`;
+        nav(`/proprietarios/${slug}`, { state: { owner: novo } });
+      }
+
       await onSaved();
       onClose();
-
-      const slug = `${encodeURIComponent(novo.nome.replace(/\s+/g, "-"))}-${novo.id}`;
-      nav(`/proprietarios/${slug}`, { state: { owner: novo } });
     } catch (e: any) {
-      alert(`Falha ao criar proprietário.\n${e?.message ?? e}`);
+      alert(`Falha ao salvar proprietário.\n${e?.message ?? e}`);
     }
   }
+
 
   return (
     <div className="backdrop" onClick={(e) => e.currentTarget === e.target && onClose()}>
       <div className="small-modal" role="dialog" aria-modal="true">
-        <h3 className="confirm-title">Criar proprietário</h3>
+        <h3 className="confirm-title">{proprietario ? "Editar proprietário" : "Criar proprietário"}</h3>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <div>
@@ -399,6 +438,7 @@ function AddProprietarioModal({
     </div>
   );
 }
+
 
 function ConfirmDeleteDialog({
   open, onClose, onConfirm,
@@ -595,6 +635,7 @@ function ProprietarioDetalheView() {
   const [owner, setOwner] = useState<Proprietario | null | undefined>(
     location.state?.owner ?? undefined
   );
+  const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
     if (!slug) {
@@ -634,18 +675,24 @@ function ProprietarioDetalheView() {
         <div className="breadcrumb">
           <Link to="/dashboard">Dashboard</Link> /{" "}
           <Link to="/proprietarios">Proprietários</Link> /{" "}
-          <span className="breadcrumb-active">{owner ? owner.nome : "Detalhe"}</span>
+          <span className="breadcrumb-active">
+            {owner ? owner.nome : "Detalhe"}
+          </span>
         </div>
         <div />
       </div>
 
       {owner === undefined ? (
         <section className="card">
-          <div className="body" style={{ color: "#64748b" }}>Carregando...</div>
+          <div className="body" style={{ color: "#64748b" }}>
+            Carregando...
+          </div>
         </section>
       ) : owner === null ? (
         <section className="card">
-          <div className="body" style={{ color: "#64748b" }}>Proprietário não encontrado.</div>
+          <div className="body" style={{ color: "#64748b" }}>
+            Proprietário não encontrado.
+          </div>
         </section>
       ) : (
         <section className="card">
@@ -653,7 +700,13 @@ function ProprietarioDetalheView() {
             <div style={{ flex: 1 }}>
               <div className="backline">
                 <Link to="/proprietarios" className="backbtn" title="Voltar">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
                     <path
                       d="M15 19l-7-7 7-7"
                       strokeWidth="3"
@@ -665,8 +718,11 @@ function ProprietarioDetalheView() {
                 </Link>
               </div>
               <h2>{owner.nome}</h2>
-              <div style={{ color: "#64748b" }}>{formatDoc(owner.doc)} · 0 imóveis</div>
+              <div style={{ color: "#64748b" }}>
+                {formatDoc(owner.doc)} · 0 imóveis
+              </div>
             </div>
+
             <div style={{ display: "flex", gap: 8 }}>
               {owner.email && (
                 <a
@@ -688,13 +744,21 @@ function ProprietarioDetalheView() {
                   Abrir WhatsApp
                 </a>
               )}
+              <button className="fixedbtn" onClick={() => setEditOpen(true)}>
+                Editar
+              </button>
             </div>
           </div>
 
           <div className="tabbar">
-            <Link to={base} className={`tab ${!isImoveis ? "active" : ""}`}>Dados</Link>
+            <Link to={base} className={`tab ${!isImoveis ? "active" : ""}`}>
+              Dados
+            </Link>
             <span className="tab">Documentos</span>
-            <Link to={`${base}/imoveis`} className={`tab ${isImoveis ? "active" : ""}`}>
+            <Link
+              to={`${base}/imoveis`}
+              className={`tab ${isImoveis ? "active" : ""}`}
+            >
               Imóveis
             </Link>
           </div>
@@ -725,9 +789,27 @@ function ProprietarioDetalheView() {
           </div>
         </section>
       )}
+
+      {/* --- Modal de edição --- */}
+      {owner && (
+        <AddProprietarioModal
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          onSaved={async () => {
+            if (owner.id) {
+              const atualizado = await getProprietario(owner.id);
+              setOwner(atualizado);
+            }
+            setEditOpen(false);
+          }}
+          proprietario={owner}
+        />
+      )}
     </div>
   );
 }
+
+
 
 /* ============================================================
    Export principal: decide por rota (lista x detalhe)
