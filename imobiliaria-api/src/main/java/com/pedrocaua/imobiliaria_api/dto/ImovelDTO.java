@@ -1,10 +1,26 @@
 package com.pedrocaua.imobiliaria_api.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.pedrocaua.imobiliaria_api.entity.Imovel;
+
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public class ImovelDTO {
+/**
+ * DTO de resposta do Imóvel.
+ * Usado em:
+ *  - GET /api/v1/imoveis/{id}
+ *  - GET /api/v1/proprietarios/{ownerId}/imoveis
+ *  - Demais respostas onde o imóvel precisa ser serializado.
+ *
+ * Observação: mantém os mesmos nomes que o frontend consome
+ * (ex.: "endereco") para evitar mapeamentos adicionais.
+ */
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class ImovelDTO implements Serializable {
+
     private Long id;
 
     private String endereco;
@@ -33,7 +49,46 @@ public class ImovelDTO {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate disponivelEm;
 
-    // getters/setters
+    /* =======================
+       Factory / Mapping
+       ======================= */
+
+    /** Constrói um DTO a partir da entidade. */
+    public static ImovelDTO fromEntity(Imovel e) {
+        if (e == null) return null;
+        ImovelDTO dto = new ImovelDTO();
+        dto.setId(e.getId());
+        dto.setEndereco(e.getEndereco());
+        dto.setTipo(e.getTipo());
+        dto.setSituacao(e.getSituacao());
+        dto.setObs(e.getObs());
+
+        dto.setFinalidade(e.getFinalidade());
+        dto.setCep(e.getCep());
+        dto.setNumero(e.getNumero());
+        dto.setComplemento(e.getComplemento());
+        dto.setBairro(e.getBairro());
+        dto.setCidade(e.getCidade());
+        dto.setUf(e.getUf());
+
+        dto.setArea(e.getArea());
+        dto.setQuartos(e.getQuartos());
+        dto.setBanheiros(e.getBanheiros());
+        dto.setVagas(e.getVagas());
+
+        dto.setIptu(e.getIptu());
+        dto.setCondominio(e.getCondominio());
+
+        dto.setAnoConstrucao(e.getAnoConstrucao());
+        dto.setDisponivelEm(e.getDisponivelEm());
+        return dto;
+    }
+
+
+    /* =======================
+       Getters / Setters
+       ======================= */
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

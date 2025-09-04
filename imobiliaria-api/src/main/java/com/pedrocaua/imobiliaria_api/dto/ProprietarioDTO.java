@@ -9,7 +9,6 @@ public class ProprietarioDTO {
     private String nome;
     private String doc;
     private String email;
-
     private String tel;
     private String obs;
 
@@ -17,66 +16,34 @@ public class ProprietarioDTO {
 
     public ProprietarioDTO() {}
 
-    public Long getId() {
-        return id;
-    }
-    public void setId(Long id) {
-        this.id = id;
-    }
+    // ===== getters/setters =====
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public String getNome() {
-        return nome;
-    }
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
+    public String getNome() { return nome; }
+    public void setNome(String nome) { this.nome = nome; }
 
-    public String getDoc() {
-        return doc;
-    }
-    public void setDoc(String doc) {
-        this.doc = doc;
-    }
+    public String getDoc() { return doc; }
+    public void setDoc(String doc) { this.doc = doc; }
 
-    public String getEmail() {
-        return email;
-    }
-    public void setEmail(String email) {
-        this.email = email;
-    }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 
-    public String getTel() {
-        return tel;
-    }
-    public void setTel(String tel) {
-        this.tel = tel;
-    }
+    public String getTel() { return tel; }
+    public void setTel(String tel) { this.tel = tel; }
 
-    public String getObs() {
-        return obs;
-    }
-    public void setObs(String obs) {
-        this.obs = obs;
-    }
+    public String getObs() { return obs; }
+    public void setObs(String obs) { this.obs = obs; }
 
-    public List<ImovelDTO> getImoveis() {
-        return imoveis;
-    }
+    public List<ImovelDTO> getImoveis() { return imoveis; }
     public void setImoveis(List<ImovelDTO> imoveis) {
         this.imoveis = (imoveis != null) ? imoveis : new ArrayList<>();
     }
 
-    public String getTelefone() {
-        return getTel();
-    }
-    public void setTelefone(String telefone) {
-        setTel(telefone);
-    }
+    // aliases opcionais (se seu front usa)
+    public String getTelefone() { return getTel(); }
+    public void setTelefone(String telefone) { setTel(telefone); }
 
-    public String getObservacoes() {
-        return getObs();
-    }
-    public void setObservacoes(String observacoes) {
-        setObs(observacoes);
-    }
+    public String getObservacoes() { return getObs(); }
+    public void setObservacoes(String observacoes) { setObs(observacoes); }
 }

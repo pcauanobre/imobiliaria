@@ -1,36 +1,126 @@
 package com.pedrocaua.imobiliaria_api.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.pedrocaua.imobiliaria_api.entity.Imovel;
+import com.pedrocaua.imobiliaria_api.entity.Proprietario;
+import jakarta.validation.constraints.*;
+
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public class ImovelCreateRequest {
+/**
+ * Payload para criação de Imóvel (via POST /proprietarios/{ownerId}/imoveis).
+ * O ownerId vem na URL; aqui ficam apenas os campos do imóvel.
+ */
+public class ImovelCreateRequest implements Serializable {
+
     @JsonProperty("end")
     @JsonAlias({"endereco"})
+    @NotBlank
+    @Size(max = 255)
     private String end;
 
+    @NotBlank
+    @Size(max = 60)
     private String tipo;
+
+    @NotBlank
+    @Size(max = 40)
     private String situacao;
+
+    @Size(max = 2000)
     private String obs;
 
+    @Size(max = 20)
     private String finalidade;
+
+    @Size(max = 10)
     private String cep;
+
+    @Size(max = 20)
     private String numero;
+
+    @Size(max = 100)
     private String complemento;
+
+    @Size(max = 100)
     private String bairro;
+
+    @Size(max = 100)
     private String cidade;
+
+    @NotBlank
+    @Size(min = 2, max = 2)
     private String uf;
+
+    @PositiveOrZero
     private BigDecimal area;
+
+    @Min(0)
     private Integer quartos;
+
+    @Min(0)
     private Integer banheiros;
+
+    @Min(0)
     private Integer vagas;
+
+    @PositiveOrZero
     private BigDecimal iptu;
+
+    @PositiveOrZero
     private BigDecimal condominio;
+
+    @Min(1800)
+    @Max(3000)
     private Integer anoConstrucao;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate disponivelEm;
 
-    // getters/setters
+    /* =======================
+       Helpers
+       ======================= */
+
+    /** Constrói a entidade pronta para persistência. */
+    public Imovel toEntity(Proprietario proprietario) {
+        Imovel e = new Imovel();
+        e.setProprietario(proprietario);
+        e.setEndereco(norm(end));
+        e.setTipo(norm(tipo));
+        e.setSituacao(norm(situacao));
+        e.setObs(norm(obs));
+        e.setFinalidade(norm(finalidade));
+        e.setCep(norm(cep));
+        e.setNumero(norm(numero));
+        e.setComplemento(norm(complemento));
+        e.setBairro(norm(bairro));
+        e.setCidade(norm(cidade));
+        e.setUf(norm(uf != null ? uf.toUpperCase() : null));
+        e.setArea(area);
+        e.setQuartos(quartos);
+        e.setBanheiros(banheiros);
+        e.setVagas(vagas);
+        e.setIptu(iptu);
+        e.setCondominio(condominio);
+        e.setAnoConstrucao(anoConstrucao);
+        e.setDisponivelEm(disponivelEm);
+        return e;
+    }
+
+    private static String norm(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
+    }
+
+    /* =======================
+       Getters / Setters
+       ======================= */
+
     public String getEnd() { return end; }
     public void setEnd(String end) { this.end = end; }
     public String getTipo() { return tipo; }

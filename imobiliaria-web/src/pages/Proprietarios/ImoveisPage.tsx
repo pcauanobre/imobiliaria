@@ -23,6 +23,12 @@ const css = `
 .btn-add{ background:#0B132B; color:#fff; border:0; border-radius:12px; padding:10px 18px; font-size:14px; font-weight:500; cursor:pointer;
   box-shadow:0 2px 4px rgba(0,0,0,.08); transition:background .2s ease }
 .btn-add:hover{ background:#1C2541 }
+.fixedbtn{
+  border:1px solid var(--brand); background:var(--brand); border-radius:999px;
+  padding:8px 16px; font-weight:600; font-size:14px; color:#fff; cursor:pointer;
+  text-decoration:none; display:inline-flex; align-items:center; transition:background .2s ease;
+}
+.fixedbtn:hover{ background:#1C2541 }
 
 .input{ width:100%; background:#fff; border:1px solid var(--border); border-radius:14px; padding:12px 14px; font-size:15.5px; outline:none }
 .input:focus{ box-shadow:var(--ring); border-color:#94a3b8 }
@@ -50,6 +56,7 @@ textarea.input{ resize:vertical }
 .body{ padding:16px 18px }
 .k{ font-size:12px; color:#64748b }
 .v{ margin-top:6px; font-size:15.5px }
+.grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:16px }
 
 .backline{ margin-top:10px; margin-bottom:18px }
 .backbtn{ display:inline-flex; align-items:center; gap:8px; font-weight:800; color:var(--text);
@@ -557,18 +564,25 @@ function AddImovelModal({
 }
 
 /* ============================================================
-   Tela de Detalhe do Imóvel
+   Tela de Detalhe do Imóvel (com navegação para /docs e /fotos)
    ============================================================ */
 function ImovelDetailView({
-  owner, imovelId, slug
+  owner, imovelId, slug, initialTab,
 }: {
   owner: Proprietario;
   imovelId: number;
   slug: string;
+  initialTab?: "docs" | "fotos";
 }) {
   const nav = useNavigate();
+  const loc = useLocation();
   const [imovel, setImovel] = useState<Imovel | null | undefined>(undefined);
   const [editOpen, setEditOpen] = useState(false);
+
+  // qual aba
+  const isDocs = loc.pathname.endsWith("/docs") || initialTab === "docs";
+  const isFotos = loc.pathname.endsWith("/fotos") || initialTab === "fotos";
+  const base = `/proprietarios/${slug}/imoveis/${imovelId}`;
 
   useEffect(() => {
     (async () => {
@@ -582,6 +596,12 @@ function ImovelDetailView({
     })();
   }, [imovelId]);
 
+  // rótulo final do breadcrumb conforme aba
+  const tailCrumb = isDocs ? "Documentos" : isFotos ? "Fotos" : "Detalhe";
+
+  // número para breadcrumb: usa número do imóvel (se existir) senão id
+  const numeroCrumb = (imovel?.numero && String(imovel.numero).trim()) || String(imovelId);
+
   return (
     <div className="page">
       <style>{css}</style>
@@ -591,7 +611,9 @@ function ImovelDetailView({
           <Link to="/dashboard">Dashboard</Link> /{" "}
           <Link to="/proprietarios">Proprietários</Link> /{" "}
           <Link to={`/proprietarios/${slug}`}>{owner?.nome ?? "Proprietário"}</Link> /{" "}
-          <span className="breadcrumb-active">Imóvel</span>
+          <Link to={`/proprietarios/${slug}/imoveis`}>Imóveis</Link> /{" "}
+          <Link to={base}>{numeroCrumb}</Link> /{" "}
+          <span className="breadcrumb-active">{tailCrumb}</span>
         </div>
         <div />
       </div>
@@ -609,7 +631,12 @@ function ImovelDetailView({
           <div className="cardhead">
             <div style={{ flex: 1 }}>
               <div className="backline">
-                <button className="backbtn" onClick={() => nav(-1)} title="Voltar">
+                {/* Sempre volta para a lista de IMÓVEIS do proprietário */}
+                <button
+                  className="backbtn"
+                  onClick={() => nav(`/proprietarios/${slug}/imoveis`, { replace: true })}
+                  title="Voltar para os imóveis do proprietário"
+                >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path d="M15 19l-7-7 7-7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
@@ -628,112 +655,62 @@ function ImovelDetailView({
           </div>
 
           <div className="tabbar">
-            <a className="tab active">Informações</a>
-            <a className="tab">Documentos</a>
-            <a className="tab">Fotos</a>
+            <Link className={`tab ${!isDocs && !isFotos ? "active" : ""}`} to={base}>Informações</Link>
+            <Link className={`tab ${isDocs ? "active" : ""}`} to={`${base}/docs`}>Documentos</Link>
+            <Link className={`tab ${isFotos ? "active" : ""}`} to={`${base}/fotos`}>Fotos</Link>
           </div>
 
           <div className="body">
-            <div className="grid2">
-              <div>
-                <div className="k">ENDEREÇO</div>
-                <div className="v">{imovel.end || "-"}</div>
-              </div>
-              <div>
-                <div className="k">TIPO</div>
-                <div className="v">{imovel.tipo || "-"}</div>
-              </div>
-              <div>
-                <div className="k">SITUAÇÃO</div>
-                <div className="v">{imovel.situacao || "-"}</div>
-              </div>
-              <div>
-                <div className="k">FINALIDADE</div>
-                <div className="v">{imovel.finalidade || "-"}</div>
-              </div>
+            {/* Informações */}
+            {!isDocs && !isFotos && (
+              <div className="grid2">
+                <div><div className="k">ENDEREÇO</div><div className="v">{imovel.end || "-"}</div></div>
+                <div><div className="k">TIPO</div><div className="v">{imovel.tipo || "-"}</div></div>
+                <div><div className="k">SITUAÇÃO</div><div className="v">{imovel.situacao || "-"}</div></div>
+                <div><div className="k">FINALIDADE</div><div className="v">{imovel.finalidade || "-"}</div></div>
 
-              <div>
-                <div className="k">CEP</div>
-                <div className="v">{imovel.cep || "-"}</div>
-              </div>
-              <div>
-                <div className="k">NÚMERO</div>
-                <div className="v">{imovel.numero || "-"}</div>
-              </div>
-              <div>
-                <div className="k">COMPLEMENTO</div>
-                <div className="v">{imovel.complemento || "-"}</div>
-              </div>
-              <div>
-                <div className="k">BAIRRO</div>
-                <div className="v">{imovel.bairro || "-"}</div>
-              </div>
+                <div><div className="k">CEP</div><div className="v">{imovel.cep || "-"}</div></div>
+                <div><div className="k">NÚMERO</div><div className="v">{imovel.numero || "-"}</div></div>
+                <div><div className="k">COMPLEMENTO</div><div className="v">{imovel.complemento || "-"}</div></div>
+                <div><div className="k">BAIRRO</div><div className="v">{imovel.bairro || "-"}</div></div>
 
-              <div>
-                <div className="k">CIDADE</div>
-                <div className="v">{imovel.cidade || "-"}</div>
-              </div>
-              <div>
-                <div className="k">UF</div>
-                <div className="v">{imovel.uf || "-"}</div>
-              </div>
+                <div><div className="k">CIDADE</div><div className="v">{imovel.cidade || "-"}</div></div>
+                <div><div className="k">UF</div><div className="v">{imovel.uf || "-"}</div></div>
 
-              <div>
-                <div className="k">ÁREA (m²)</div>
-                <div className="v">{imovel.area ?? "-"}</div>
-              </div>
-              <div>
-                <div className="k">QUARTOS</div>
-                <div className="v">{imovel.quartos ?? "-"}</div>
-              </div>
-              <div>
-                <div className="k">BANHEIROS</div>
-                <div className="v">{imovel.banheiros ?? "-"}</div>
-              </div>
-              <div>
-                <div className="k">VAGAS</div>
-                <div className="v">{imovel.vagas ?? "-"}</div>
-              </div>
+                <div><div className="k">ÁREA (m²)</div><div className="v">{imovel.area ?? "-"}</div></div>
+                <div><div className="k">QUARTOS</div><div className="v">{imovel.quartos ?? "-"}</div></div>
+                <div><div className="k">BANHEIROS</div><div className="v">{imovel.banheiros ?? "-"}</div></div>
+                <div><div className="k">VAGAS</div><div className="v">{imovel.vagas ?? "-"}</div></div>
 
-              <div>
-                <div className="k">IPTU (R$/mês)</div>
-                <div className="v">{imovel.iptu ?? "-"}</div>
-              </div>
-              <div>
-                <div className="k">CONDOMÍNIO (R$/mês)</div>
-                <div className="v">{imovel.condominio ?? "-"}</div>
-              </div>
-              <div>
-                <div className="k">ANO DE CONSTRUÇÃO</div>
-                <div className="v">{imovel.anoConstrucao ?? "-"}</div>
-              </div>
-              <div>
-                <div className="k">DISPONÍVEL A PARTIR DE</div>
-                <div className="v">{imovel.disponivelEm || "-"}</div>
-              </div>
+                <div><div className="k">IPTU (R$/mês)</div><div className="v">{imovel.iptu ?? "-"}</div></div>
+                <div><div className="k">CONDOMÍNIO (R$/mês)</div><div className="v">{imovel.condominio ?? "-"}</div></div>
+                <div><div className="k">ANO DE CONSTRUÇÃO</div><div className="v">{imovel.anoConstrucao ?? "-"}</div></div>
+                <div><div className="k">DISPONÍVEL A PARTIR DE</div><div className="v">{imovel.disponivelEm || "-"}</div></div>
 
-              <div style={{ gridColumn: "1 / -1" }}>
-                <div className="k">OBSERVAÇÕES</div>
-                <div className="v">{imovel.obs || "-"}</div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <div className="k">OBSERVAÇÕES</div>
+                  <div className="v">{imovel.obs || "-"}</div>
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* seção de documentos */}
-            <div style={{ marginTop: 18 }}>
-              <div className="k" style={{ marginBottom: 8 }}>Documentos (PDF/Imagens) — demonstração</div>
-              <input className="input" type="file" multiple accept=".pdf,image/*" />
-            </div>
-
-            {/* seção de fotos */}
-            <div style={{ marginTop: 18 }}>
-              <div className="k" style={{ marginBottom: 8 }}>Fotos (pré-visualização) — demonstração</div>
-              <div className="thumbgrid">
-                {/* placeholders/miniaturas futuras */}
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="thumb" />
-                ))}
+            {isDocs && (
+              <div>
+                <div className="k" style={{ marginBottom: 8 }}>Documentos (PDF/Imagens) — demonstração</div>
+                <input className="input" type="file" multiple accept=".pdf,image/*" />
               </div>
-            </div>
+            )}
+
+            {isFotos && (
+              <div>
+                <div className="k" style={{ marginBottom: 8 }}>Fotos (pré-visualização) — demonstração</div>
+                <div className="thumbgrid">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="thumb" />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {owner && (
@@ -758,8 +735,10 @@ function ImovelDetailView({
   );
 }
 
+
 /* ============================================================
-   Página de Imóveis do Proprietário (lista) — e decide se abre detalhe
+   Página de Imóveis do Proprietário (lista)
+   — também detecta rota de detalhe: /imoveis/:id(/docs|/fotos)
    ============================================================ */
 export default function ImoveisPage() {
   const { slug } = useParams();
@@ -780,10 +759,11 @@ export default function ImoveisPage() {
     return Number.isFinite(id) ? id : undefined;
   })();
 
-  // detecta se é rota de detalhe: /proprietarios/:slug/imoveis/:imovelId
+  // detecta /proprietarios/:slug/imoveis/:imovelId(/docs|/fotos)
   const pathname = typeof window !== "undefined" ? window.location.pathname : "";
-  const match = pathname.match(/\/imoveis\/(\d+)(?:\/)?$/);
+  const match = pathname.match(/\/imoveis\/(\d+)(?:\/(docs|fotos))?\/?$/);
   const imovelId = match ? Number(match[1]) : undefined;
+  const subTab = (match?.[2] as "docs" | "fotos" | undefined) ?? undefined;
 
   useEffect(() => {
     if (!slug || !ownerId) {
@@ -809,9 +789,9 @@ export default function ImoveisPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, ownerId]);
 
-  // Se há imovelId na rota -> abre tela de detalhe
+  // Se há imovelId na rota -> abre tela de detalhe (com abas de navegação)
   if (imovelId && owner) {
-    return <ImovelDetailView owner={owner} imovelId={imovelId} slug={slug!} />;
+    return <ImovelDetailView owner={owner} imovelId={imovelId} slug={slug!} initialTab={subTab} />;
   }
 
   const filtrados = useMemo(() => {
@@ -847,8 +827,14 @@ export default function ImoveisPage() {
         <div className="breadcrumb">
           <Link to="/dashboard">Dashboard</Link> /{" "}
           <Link to="/proprietarios">Proprietários</Link> /{" "}
-          {owner ? (<><Link to={dadosHref}>{owner.nome}</Link> / <span className="breadcrumb-active">Imóveis</span></>) :
-            (<span className="breadcrumb-active">Imóveis</span>)}
+          {owner ? (
+            <>
+              <Link to={dadosHref}>{owner.nome}</Link> /{" "}
+              <span className="breadcrumb-active">Imóveis</span>
+            </>
+          ) : (
+            <span className="breadcrumb-active">Imóveis</span>
+          )}
         </div>
         <div/>
       </div>
@@ -857,7 +843,12 @@ export default function ImoveisPage() {
         <div className="cardhead">
           <div>
             <div className="backline">
-              <button className="backbtn" onClick={() => nav(-1)} title="Voltar">
+              {/* 🔙 REGRAS DE VOLTAR: SEMPRE VOLTA PARA A LISTA DE PROPRIETÁRIOS */}
+              <button
+                className="backbtn"
+                onClick={() => nav("/proprietarios", { replace: true })}
+                title="Voltar para Proprietários"
+              >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path d="M15 19l-7-7 7-7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -878,7 +869,12 @@ export default function ImoveisPage() {
         </div>
 
         <div style={{ padding: "12px 18px" }}>
-          <input className="input" placeholder="Buscar por endereço, tipo ou situação" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input
+            className="input"
+            placeholder="Buscar por endereço, tipo ou situação"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
         </div>
 
         <div className="tablewrap">
@@ -893,9 +889,17 @@ export default function ImoveisPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={4} style={{ padding: 24, textAlign: "center", color: "#64748b" }}>Carregando...</td></tr>
+                <tr>
+                  <td colSpan={4} style={{ padding: 24, textAlign: "center", color: "#64748b" }}>
+                    Carregando...
+                  </td>
+                </tr>
               ) : filtrados.length === 0 ? (
-                <tr><td colSpan={4} style={{ padding: 24, textAlign: "center", color: "#64748b" }}>Nenhum imóvel encontrado.</td></tr>
+                <tr>
+                  <td colSpan={4} style={{ padding: 24, textAlign: "center", color: "#64748b" }}>
+                    Nenhum imóvel encontrado.
+                  </td>
+                </tr>
               ) : (
                 filtrados.map((i) => (
                   <tr key={i.id}>
@@ -914,9 +918,14 @@ export default function ImoveisPage() {
                             <path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </Link>
-                        <button className="iconbtn" title="Excluir" onClick={() => setConfirm({ open: true, id: i.id })}>
+                        <button
+                          className="iconbtn"
+                          title="Excluir"
+                          onClick={() => setConfirm({ open: true, id: i.id })}
+                        >
                           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor">
-                            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M9 6v12m6-12v12M10 6l1-2h2l1 2M5 6l1 14a2 2 0 002 2h8a2 2 0 002-2l1-14"/>
+                            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                              d="M3 6h18M9 6v12m6-12v12M10 6l1-2h2l1 2M5 6l1 14a2 2 0 002 2h8a2 2 0 002-2l1-14"/>
                           </svg>
                         </button>
                       </div>
@@ -960,14 +969,33 @@ export default function ImoveisPage() {
 
 
 /* ============================================================
-   Página de Detalhe do Imóvel
+   Página de Detalhe do Imóvel (rota dedicada opcional)
+   — alternativa para quando você registrar rotas específicas no App.tsx
    ============================================================ */
 export function ImovelDetalheView() {
   const { slug, imovelId } = useParams();
   const nav = useNavigate();
+  const loc = useLocation();
 
   const [imovel, setImovel] = useState<Imovel | null | undefined>(undefined);
+  const [editOpen, setEditOpen] = useState(false);
 
+  // Deriva ownerId e nome do proprietário a partir do slug (ex.: "ana-gomes-12")
+  const ownerIdFromSlug = useMemo(() => {
+    if (!slug) return undefined;
+    const parts = decodeURIComponent(slug).split("-");
+    const last = parts[parts.length - 1];
+    const id = Number(last);
+    return Number.isFinite(id) ? id : undefined;
+  }, [slug]);
+
+  const ownerNameFromSlug = useMemo(() => {
+    if (!slug) return "Proprietário";
+    const s = decodeURIComponent(slug);
+    return s.replace(/-\d+$/, "").replace(/-/g, " ").replace(/\s+/g, " ").trim() || "Proprietário";
+  }, [slug]);
+
+  // Carrega o imóvel
   useEffect(() => {
     if (!imovelId) return;
     (async () => {
@@ -983,87 +1011,139 @@ export function ImovelDetalheView() {
     })();
   }, [imovelId]);
 
+  // Abas e breadcrumbs
+  const base = `/proprietarios/${slug}/imoveis/${imovelId}`;
+  const isDocs = loc.pathname.endsWith("/docs");
+  const isFotos = loc.pathname.endsWith("/fotos");
+  const tailCrumb = isDocs ? "Documentos" : isFotos ? "Fotos" : "Informações";
+  const numeroCrumb = (imovel?.numero && String(imovel.numero).trim()) || String(imovelId);
+
+  // Estados de carregamento/erro
   if (imovel === undefined) {
-    return <div className="p-4">Carregando...</div>;
+    return (
+      <div className="page">
+        <style>{css}</style>
+        <div className="header">
+          <div className="breadcrumb">
+            <Link to="/dashboard">Dashboard</Link> /{" "}
+            <Link to="/proprietarios">Proprietários</Link> /{" "}
+            <Link to={`/proprietarios/${slug}/imoveis`}>Imóveis</Link> /{" "}
+            <Link to={base}>{numeroCrumb}</Link> /{" "}
+            <span className="breadcrumb-active">{tailCrumb}</span>
+          </div>
+          <div />
+        </div>
+        <div className="body" style={{ color: "#64748b" }}>Carregando...</div>
+      </div>
+    );
   }
   if (imovel === null) {
-    return <div className="p-4">Imóvel não encontrado.</div>;
+    return (
+      <div className="page">
+        <style>{css}</style>
+        <div className="header">
+          <div className="breadcrumb">
+            <Link to="/dashboard">Dashboard</Link> /{" "}
+            <Link to="/proprietarios">Proprietários</Link> /{" "}
+            <Link to={`/proprietarios/${slug}/imoveis`}>Imóveis</Link> /{" "}
+            <Link to={base}>{numeroCrumb}</Link> /{" "}
+            <span className="breadcrumb-active">{tailCrumb}</span>
+          </div>
+          <div />
+        </div>
+        <div className="body" style={{ color: "#64748b" }}>Imóvel não encontrado.</div>
+      </div>
+    );
   }
-
-  const base = `/proprietarios/${slug}/imoveis/${imovelId}`;
-  const isDocs = location.pathname.endsWith("/docs");
-  const isFotos = location.pathname.endsWith("/fotos");
 
   return (
     <div className="page">
       <style>{css}</style>
 
+      {/* Breadcrumbs no padrão pedido */}
       <div className="header">
         <div className="breadcrumb">
           <Link to="/dashboard">Dashboard</Link> /{" "}
           <Link to="/proprietarios">Proprietários</Link> /{" "}
           <Link to={`/proprietarios/${slug}/imoveis`}>Imóveis</Link> /{" "}
-          <span className="breadcrumb-active">Detalhe</span>
+          <Link to={base}>{numeroCrumb}</Link> /{" "}
+          <span className="breadcrumb-active">{tailCrumb}</span>
         </div>
         <div />
       </div>
 
       <section className="card">
         <div className="cardhead">
-          <div>
+          {/* Esquerda: voltar + título/subtítulo */}
+          <div style={{ flex: 1 }}>
             <div className="backline">
-              <button className="backbtn" onClick={() => nav(-1)} title="Voltar">
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                >
-                  <path
-                    d="M15 19l-7-7 7-7"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
+              {/* volta SEM histórico, direto para a lista do proprietário */}
+              <button
+                className="backbtn"
+                onClick={() => nav(`/proprietarios/${slug}/imoveis`, { replace: true })}
+                title="Voltar para os imóveis do proprietário"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M15 19l-7-7 7-7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 Voltar
               </button>
             </div>
-            <h2>{imovel.end || "Imóvel"}</h2>
-            <p style={{ color: "#64748b" }}>{imovel.tipo ?? "-"} · {imovel.situacao ?? "-"}</p>
+
+            <h2 style={{ marginBottom: 4 }}>{imovel.end || `Imóvel #${imovelId}`}</h2>
+            <div style={{ color: "#64748b" }}>
+              {imovel.tipo ?? "-"} · {imovel.situacao ?? "-"}
+            </div>
+          </div>
+
+          {/* Direita: Editar */}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="fixedbtn" onClick={() => setEditOpen(true)} title="Editar imóvel">
+              Editar
+            </button>
           </div>
         </div>
 
-        {/* Tabs iguais ao proprietário */}
+        {/* Abas internas */}
         <div className="tabbar">
-          <Link to={base} className={`tab ${!isDocs && !isFotos ? "active" : ""}`}>
+          <Link className={`tab ${!isDocs && !isFotos ? "active" : ""}`} to={base}>
             Informações
           </Link>
-          <Link to={`${base}/docs`} className={`tab ${isDocs ? "active" : ""}`}>
+          <Link className={`tab ${isDocs ? "active" : ""}`} to={`${base}/docs`}>
             Documentos
           </Link>
-          <Link to={`${base}/fotos`} className={`tab ${isFotos ? "active" : ""}`}>
+          <Link className={`tab ${isFotos ? "active" : ""}`} to={`${base}/fotos`}>
             Fotos
           </Link>
         </div>
 
+        {/* Conteúdo das abas */}
         <div className="body">
-          {/* Aba Informações */}
           {!isDocs && !isFotos && (
-            <div className="grid">
-              <div>
-                <div className="k">ENDEREÇO</div>
-                <div className="v">{imovel.end || "-"}</div>
-              </div>
-              <div>
-                <div className="k">TIPO</div>
-                <div className="v">{imovel.tipo || "-"}</div>
-              </div>
-              <div>
-                <div className="k">SITUAÇÃO</div>
-                <div className="v">{imovel.situacao || "-"}</div>
-              </div>
+            <div className="grid2">
+              <div><div className="k">ENDEREÇO</div><div className="v">{imovel.end || "-"}</div></div>
+              <div><div className="k">TIPO</div><div className="v">{imovel.tipo || "-"}</div></div>
+              <div><div className="k">SITUAÇÃO</div><div className="v">{imovel.situacao || "-"}</div></div>
+              <div><div className="k">FINALIDADE</div><div className="v">{imovel.finalidade || "-"}</div></div>
+
+              <div><div className="k">CEP</div><div className="v">{imovel.cep || "-"}</div></div>
+              <div><div className="k">NÚMERO</div><div className="v">{imovel.numero || "-"}</div></div>
+              <div><div className="k">COMPLEMENTO</div><div className="v">{imovel.complemento || "-"}</div></div>
+              <div><div className="k">BAIRRO</div><div className="v">{imovel.bairro || "-"}</div></div>
+
+              <div><div className="k">CIDADE</div><div className="v">{imovel.cidade || "-"}</div></div>
+              <div><div className="k">UF</div><div className="v">{imovel.uf || "-"}</div></div>
+
+              <div><div className="k">ÁREA (m²)</div><div className="v">{imovel.area ?? "-"}</div></div>
+              <div><div className="k">QUARTOS</div><div className="v">{imovel.quartos ?? "-"}</div></div>
+              <div><div className="k">BANHEIROS</div><div className="v">{imovel.banheiros ?? "-"}</div></div>
+              <div><div className="k">VAGAS</div><div className="v">{imovel.vagas ?? "-"}</div></div>
+
+              <div><div className="k">IPTU (R$/mês)</div><div className="v">{imovel.iptu ?? "-"}</div></div>
+              <div><div className="k">CONDOMÍNIO (R$/mês)</div><div className="v">{imovel.condominio ?? "-"}</div></div>
+              <div><div className="k">ANO DE CONSTRUÇÃO</div><div className="v">{imovel.anoConstrucao ?? "-"}</div></div>
+              <div><div className="k">DISPONÍVEL A PARTIR DE</div><div className="v">{imovel.disponivelEm || "-"}</div></div>
+
               <div style={{ gridColumn: "1 / -1" }}>
                 <div className="k">OBSERVAÇÕES</div>
                 <div className="v">{imovel.obs || "-"}</div>
@@ -1071,26 +1151,46 @@ export function ImovelDetalheView() {
             </div>
           )}
 
-          {/* Aba Documentos */}
           {isDocs && (
             <div>
-              <p className="k">Upload de documentos (PDF/Imagens)</p>
-              <input type="file" multiple />
+              <div className="k" style={{ marginBottom: 8 }}>Upload de documentos (PDF/Imagens)</div>
+              <input className="input" type="file" multiple accept=".pdf,image/*" />
             </div>
           )}
 
-          {/* Aba Fotos */}
           {isFotos && (
             <div>
-              <p className="k">Fotos do imóvel</p>
-              <div className="thumbgrid">
-                {/* depois você pode integrar upload */}
-                <div className="k">[upload de fotos aqui]</div>
+              <div className="k" style={{ marginBottom: 8 }}>Fotos do imóvel</div>
+              <div className="thumbgrid" style={{ marginBottom: 10 }}>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="thumb" />
+                ))}
               </div>
+              <div className="k">[upload de fotos aqui]</div>
             </div>
           )}
         </div>
+
+        {/* Modal de edição (fecha só pelos botões internos) */}
+        {editOpen && (
+          <AddImovelModal
+            open={editOpen}
+            onClose={() => setEditOpen(false)}
+            ownerName={ownerNameFromSlug}
+            ownerId={ownerIdFromSlug ?? 0}
+            imovel={imovel}
+            onSaved={async () => {
+              const res = await fetch(`${API_BASE}/api/v1/imoveis/${imovelId}`);
+              if (res.ok) {
+                const dto = await res.json();
+                setImovel({ ...dto, end: dto.endereco ?? dto.end ?? null });
+              }
+              setEditOpen(false);
+            }}
+          />
+        )}
       </section>
     </div>
   );
 }
+

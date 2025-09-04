@@ -31,29 +31,44 @@ public class ProprietarioService {
         this.proprietarioRepository = proprietarioRepository;
     }
 
+    /* ================== SANITIZAÇÃO ================== */
+    private static String asNull(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
+    }
+
+    private static String digitsOrNull(String s) {
+        String t = asNull(s);
+        if (t == null) return null;
+        t = t.replaceAll("\\D", "");
+        return t.isEmpty() ? null : t;
+    }
+
     /* ================== CREATE ================== */
     @Transactional
     public ProprietarioDTO create(ProprietarioCreateRequest req) {
+        if (req == null) req = new ProprietarioCreateRequest();
+
         Proprietario p = new Proprietario();
-        p.setNome(req.getNome());
-        p.setDoc(req.getDoc());
-        p.setEmail(req.getEmail());
-        p.setTel(req.getTel());
-        p.setObs(req.getObs());
+        p.setNome(asNull(req.getNome()));
+        p.setDoc(digitsOrNull(req.getDoc()));
+        p.setEmail(asNull(req.getEmail()));
+        p.setTel(asNull(req.getTel()));
+        p.setObs(asNull(req.getObs()));
 
         if (req.getImoveis() != null) {
             for (ImovelCreateRequest ireq : req.getImoveis()) {
                 Imovel i = new Imovel();
-                i.setEndereco(ireq.getEnd());
-                i.setTipo(ireq.getTipo());
-                i.setSituacao(ireq.getSituacao());
-                i.setObs(ireq.getObs());
+                i.setEndereco(asNull(ireq.getEnd()));
+                i.setTipo(asNull(ireq.getTipo()));
+                i.setSituacao(asNull(ireq.getSituacao()));
+                i.setObs(asNull(ireq.getObs()));
                 p.addImovel(i);
             }
         }
 
         Proprietario saved = proprietarioRepository.save(p);
-        // garante a coleção pronta antes do DTO
         Hibernate.initialize(saved.getImoveis());
         return toDTO(saved, true);
     }
@@ -62,7 +77,6 @@ public class ProprietarioService {
     @Transactional(readOnly = true)
     public ProprietarioDTO get(Long id) {
         Proprietario entity = findOrThrow(id);
-        // precisamos dos imóveis aqui -> inicializa dentro da transação
         Hibernate.initialize(entity.getImoveis());
         return toDTO(entity, true);
     }
@@ -84,22 +98,25 @@ public class ProprietarioService {
 
         List<ProprietarioDTO> content = pageEntities.getContent()
                 .stream()
-                .map(p -> toDTO(p, false)) // não toca na coleção lazy
+                .map(p -> toDTO(p, false))
                 .collect(Collectors.toList());
 
         return new PageImpl<>(content, pageable, pageEntities.getTotalElements());
     }
 
-    /* ================== UPDATE (com upsert de imóveis) ================== */
+    /* ================== UPDATE (permite limpar para null) ================== */
     @Transactional
     public ProprietarioDTO update(Long id, ProprietarioUpdateRequest body) {
         Proprietario p = findOrThrow(id);
 
-        if (body.getNome() != null) p.setNome(body.getNome());
-        if (body.getDoc() != null)  p.setDoc(body.getDoc());
-        if (body.getEmail() != null) p.setEmail(body.getEmail());
-        if (body.getTel() != null)   p.setTel(body.getTel());
-        if (body.getObs() != null)   p.setObs(body.getObs());
+        if (body == null) body = new ProprietarioUpdateRequest();
+
+        // aplica exatamente o que vier, inclusive null => limpa campo
+        p.setNome(asNull(body.getNome()));
+        p.setDoc(digitsOrNull(body.getDoc()));
+        p.setEmail(asNull(body.getEmail()));
+        p.setTel(asNull(body.getTel()));
+        p.setObs(asNull(body.getObs()));
 
         if (body.getImoveis() != null) {
             Map<Long, Imovel> atuaisPorId = p.getImoveis().stream()
@@ -111,17 +128,17 @@ public class ProprietarioService {
             for (ImovelUpsertDTO in : body.getImoveis()) {
                 if (in.getId() != null && atuaisPorId.containsKey(in.getId())) {
                     Imovel i = atuaisPorId.get(in.getId());
-                    if (in.getEnd() != null)      i.setEndereco(in.getEnd());
-                    if (in.getTipo() != null)     i.setTipo(in.getTipo());
-                    if (in.getSituacao() != null) i.setSituacao(in.getSituacao());
-                    if (in.getObs() != null)      i.setObs(in.getObs());
+                    i.setEndereco(asNull(in.getEnd()));
+                    i.setTipo(asNull(in.getTipo()));
+                    i.setSituacao(asNull(in.getSituacao()));
+                    i.setObs(asNull(in.getObs()));
                     manterIds.add(i.getId());
                 } else {
                     Imovel i = new Imovel();
-                    i.setEndereco(in.getEnd());
-                    i.setTipo(in.getTipo());
-                    i.setSituacao(in.getSituacao());
-                    i.setObs(in.getObs());
+                    i.setEndereco(asNull(in.getEnd()));
+                    i.setTipo(asNull(in.getTipo()));
+                    i.setSituacao(asNull(in.getSituacao()));
+                    i.setObs(asNull(in.getObs()));
                     p.addImovel(i);
                 }
             }
@@ -140,10 +157,10 @@ public class ProprietarioService {
         Proprietario p = findOrThrow(proprietarioId);
 
         Imovel i = new Imovel();
-        i.setEndereco(ireq.getEnd());
-        i.setTipo(ireq.getTipo());
-        i.setSituacao(ireq.getSituacao());
-        i.setObs(ireq.getObs());
+        i.setEndereco(asNull(ireq.getEnd()));
+        i.setTipo(asNull(ireq.getTipo()));
+        i.setSituacao(asNull(ireq.getSituacao()));
+        i.setObs(asNull(ireq.getObs()));
 
         p.addImovel(i);
         Proprietario saved = proprietarioRepository.save(p);

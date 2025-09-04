@@ -7,30 +7,32 @@ import java.util.List;
 import java.util.Objects;
 
 @Entity
-@Table(name = "proprietario",
+@Table(
+        name = "proprietario",
         indexes = {
                 @Index(name = "idx_proprietario_doc", columnList = "doc"),
                 @Index(name = "idx_proprietario_email", columnList = "email")
-        })
+        }
+)
 public class Proprietario {
 
     @Id
-    // ❌ removemos o auto incremento sequencial
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // casa com AUTO_INCREMENT do MySQL
     private Long id;
 
-    @Column(nullable = false, length = 120)
+    @Column(length = 255, nullable = true)
     private String nome;
 
-    @Column(name = "doc", length = 20)
+    @Column(name = "doc", length = 50, nullable = true)
     private String doc;
 
-    @Column(length = 120)
+    @Column(length = 255, nullable = true)
     private String email;
 
-    @Column(length = 30)
+    @Column(length = 50, nullable = true)
     private String tel;
 
-    @Column(length = 500)
+    @Column(length = 500, nullable = true)
     private String obs;
 
     @Column(name = "created_at", nullable = false)
@@ -44,6 +46,12 @@ public class Proprietario {
     )
     private List<Imovel> imoveis = new ArrayList<>();
 
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) createdAt = LocalDateTime.now();
+    }
+
+    // ===== relacionamento helper =====
     public void addImovel(Imovel imovel) {
         if (imovel == null) return;
         imoveis.add(imovel);
@@ -56,17 +64,7 @@ public class Proprietario {
         imovel.setProprietario(null);
     }
 
-    @PrePersist
-    protected void onCreate() {
-        if (createdAt == null) createdAt = LocalDateTime.now();
-
-        // 🔥 gera ID aleatório de 4 dígitos se ainda não existir
-        if (id == null) {
-            long randomId = (long) (1000 + Math.random() * 9000); // 1000–9999
-            id = randomId;
-        }
-    }
-
+    // ===== getters/setters =====
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -96,6 +94,7 @@ public class Proprietario {
         }
     }
 
+    // equals/hashCode por id
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -105,7 +104,5 @@ public class Proprietario {
     }
 
     @Override
-    public int hashCode() {
-        return 31;
-    }
+    public int hashCode() { return 31; }
 }

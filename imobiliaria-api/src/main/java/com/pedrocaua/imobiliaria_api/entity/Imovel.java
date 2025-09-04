@@ -1,75 +1,137 @@
 package com.pedrocaua.imobiliaria_api.entity;
 
 import jakarta.persistence.*;
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Objects;
 
+/**
+ * Entidade Imóvel
+ * - Mapeada para a tabela "imovel"
+ * - Campos alinhados com o formulário do frontend
+ * - Índices úteis e callbacks para normalização (trim/upper/empty->null)
+ */
 @Entity
-@Table(name = "imovel")
-public class Imovel {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+@Table(
+        name = "imovel",
+        indexes = {
+                @Index(name = "idx_imovel_proprietario", columnList = "proprietario_id"),
+                @Index(name = "idx_imovel_situacao", columnList = "situacao"),
+                @Index(name = "idx_imovel_cidade", columnList = "cidade")
+        }
+)
+public class Imovel implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    /* ============================
+       Campos / Relacionamentos
+       ============================ */
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "proprietario_id", nullable = false)
     private Proprietario proprietario;
 
-    @Column(name="endereco", length=255, nullable = false)
+    @Column(name = "endereco", length = 255, nullable = false)
     private String endereco;
 
-    @Column(name="tipo", length=60, nullable = false)
+    @Column(name = "tipo", length = 60, nullable = false)
     private String tipo;
 
-    @Column(name="situacao", length=40, nullable = false)
+    @Column(name = "situacao", length = 40, nullable = false)
     private String situacao;
 
-    @Column(name="obs", length=2000)
+    @Column(name = "obs", length = 2000)
     private String obs;
 
-    @Column(name="finalidade", length=20)
+    @Column(name = "finalidade", length = 20)
     private String finalidade;
 
-    @Column(name="cep", length=10)
+    @Column(name = "cep", length = 10)
     private String cep;
 
-    @Column(name="numero", length=20)
+    @Column(name = "numero", length = 20)
     private String numero;
 
-    @Column(name="complemento", length=100)
+    @Column(name = "complemento", length = 100)
     private String complemento;
 
-    @Column(name="bairro", length=100)
+    @Column(name = "bairro", length = 100)
     private String bairro;
 
-    @Column(name="cidade", length=100)
+    @Column(name = "cidade", length = 100)
     private String cidade;
 
-    @Column(name="uf", columnDefinition = "CHAR(2)", nullable = false)
+    @Column(name = "uf", columnDefinition = "CHAR(2)", nullable = false)
     private String uf;
 
-    @Column(name="area", precision=10, scale=2)
+    @Column(name = "area", precision = 10, scale = 2)
     private BigDecimal area;
 
-    @Column(name="quartos")
+    @Column(name = "quartos")
     private Integer quartos;
 
-    @Column(name="banheiros")
+    @Column(name = "banheiros")
     private Integer banheiros;
 
-    @Column(name="vagas")
+    @Column(name = "vagas")
     private Integer vagas;
 
-    @Column(name="iptu", precision=10, scale=2)
+    @Column(name = "iptu", precision = 10, scale = 2)
     private BigDecimal iptu;
 
-    @Column(name="condominio", precision=10, scale=2)
+    @Column(name = "condominio", precision = 10, scale = 2)
     private BigDecimal condominio;
 
-    @Column(name="ano_construcao")
+    @Column(name = "ano_construcao")
     private Integer anoConstrucao;
 
-    @Column(name="disponivel_em")
+    @Column(name = "disponivel_em")
     private LocalDate disponivelEm;
+
+    /* ============================
+       Construtores
+       ============================ */
+    public Imovel() {
+    }
+
+    public Imovel(Long id) {
+        this.id = id;
+    }
+
+    /* ============================
+       Callbacks JPA (normalização)
+       ============================ */
+    @PrePersist
+    @PreUpdate
+    private void normalize() {
+        endereco = norm(endereco);
+        tipo = norm(tipo);
+        situacao = norm(situacao);
+        obs = norm(obs);
+        finalidade = norm(finalidade);
+        cep = norm(cep);
+        numero = norm(numero);
+        complemento = norm(complemento);
+        bairro = norm(bairro);
+        cidade = norm(cidade);
+        uf = norm(uf);
+        if (uf != null) uf = uf.toUpperCase();
+    }
+
+    private static String norm(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
+    }
+
+    /* ============================
+       Getters / Setters
+       ============================ */
 
     public Long getId() {
         return id;
@@ -237,5 +299,26 @@ public class Imovel {
 
     public void setDisponivelEm(LocalDate disponivelEm) {
         this.disponivelEm = disponivelEm;
+    }
+
+    /* ============================
+       equals / hashCode / toString
+       ============================ */
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Imovel that)) return false;
+        return id != null && Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return 31; // recomendado para entidades JPA
+    }
+
+    @Override
+    public String toString() {
+        return "Imovel{id=" + id + ", endereco='" + endereco + "'}";
     }
 }

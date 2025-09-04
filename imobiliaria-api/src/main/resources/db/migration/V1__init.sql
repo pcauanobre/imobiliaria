@@ -1,23 +1,29 @@
--- Tabela de usuários (simples; email único entra no V2)
+-- ===== V1__init.sql (MySQL/MariaDB) =====
+
+-- Usuário (exemplo simples)
 CREATE TABLE usuario (
   id        BIGINT AUTO_INCREMENT PRIMARY KEY,
   nome      VARCHAR(255) NOT NULL,
   email     VARCHAR(255) NOT NULL
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Proprietário com dados básicos
+-- Proprietário (todos campos opcionais; created_at obrigatório)
 CREATE TABLE proprietario (
-  id   BIGINT AUTO_INCREMENT PRIMARY KEY,
-  nome VARCHAR(255) NOT NULL,
-  doc  VARCHAR(50)  NOT NULL,
-  email VARCHAR(255),
-  tel   VARCHAR(50),
-  obs   VARCHAR(500),
+  id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+  nome        VARCHAR(255) NULL,
+  doc         VARCHAR(50)  NULL,
+  email       VARCHAR(255) NULL,
+  tel         VARCHAR(50)  NULL,
+  obs         VARCHAR(500) NULL,
+  created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-  CONSTRAINT uk_proprietario_doc UNIQUE (doc)
-);
+  CONSTRAINT uk_proprietario_doc UNIQUE (doc)  -- permite vários NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Imóvel com vínculo ao proprietário + todos os campos usados no código
+CREATE INDEX idx_proprietario_doc   ON proprietario (doc);
+CREATE INDEX idx_proprietario_email ON proprietario (email);
+
+-- Imóvel (mantive alguns NOT NULL que fazem sentido; ajuste se quiser tudo opcional)
 CREATE TABLE imovel (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
 
@@ -50,9 +56,8 @@ CREATE TABLE imovel (
     FOREIGN KEY (proprietario_id) REFERENCES proprietario (id)
       ON UPDATE CASCADE
       ON DELETE RESTRICT
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Índices úteis
 CREATE INDEX idx_imovel_owner   ON imovel (proprietario_id);
 CREATE INDEX idx_imovel_cidade  ON imovel (cidade);
 CREATE INDEX idx_imovel_uf      ON imovel (uf);

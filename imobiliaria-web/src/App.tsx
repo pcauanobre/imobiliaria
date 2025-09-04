@@ -10,7 +10,7 @@ import LoginPage from "./pages/Login/LoginPage";
 import RegisterPage from "./pages/Register/RegisterPage";
 import DashboardPage from "./pages/Dashboard/DashboardPage";
 import ProprietariosPage from "./pages/Proprietarios/ProprietariosPage";
-import { ImovelDetalheView } from "./pages/Proprietarios/ImoveisPage"; // ⬅️ apenas o export nomeado
+import { ImovelDetalheView } from "./pages/Proprietarios/ImoveisPage"; // ⬅️ export nomeado
 
 function Private({ children }: { children: React.ReactNode }) {
   const ctx = useContext(AuthContext);
@@ -24,6 +24,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
@@ -38,6 +39,7 @@ export default function App() {
             }
           />
 
+          {/* Lista de proprietários */}
           <Route
             path="/proprietarios"
             element={
@@ -49,7 +51,7 @@ export default function App() {
             }
           />
 
-          {/* detalhe com slug */}
+          {/* Detalhe do proprietário (slug) */}
           <Route
             path="/proprietarios/:slug"
             element={
@@ -61,7 +63,7 @@ export default function App() {
             }
           />
 
-          {/* aba Imóveis (usa ProprietariosPage, que decide renderizar ImoveisPage internamente) */}
+          {/* Aba Imóveis do proprietário — a própria ProprietariosPage decide renderizar ImoveisPage internamente */}
           <Route
             path="/proprietarios/:slug/imoveis"
             element={
@@ -73,7 +75,7 @@ export default function App() {
             }
           />
 
-          {/* detalhe do imóvel */}
+          {/* Detalhe do imóvel + abas internas */}
           <Route
             path="/proprietarios/:slug/imoveis/:imovelId"
             element={
@@ -84,7 +86,28 @@ export default function App() {
               </Private>
             }
           />
+          <Route
+            path="/proprietarios/:slug/imoveis/:imovelId/docs"
+            element={
+              <Private>
+                <SidebarLayout>
+                  <ImovelDetalheView />
+                </SidebarLayout>
+              </Private>
+            }
+          />
+          <Route
+            path="/proprietarios/:slug/imoveis/:imovelId/fotos"
+            element={
+              <Private>
+                <SidebarLayout>
+                  <ImovelDetalheView />
+                </SidebarLayout>
+              </Private>
+            }
+          />
 
+          {/* Outras páginas */}
           <Route
             path="/alertas"
             element={
