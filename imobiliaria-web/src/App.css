@@ -40,3 +40,19 @@
 .read-the-docs {
   color: #888;
 }
+
+.pill-link {
+  display:inline-block;
+  padding:6px 12px;
+  background:#f8fafc;
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+  font-weight:600;
+  font-size:14px;
+  color:#0f172a;
+  text-decoration:none;
+  transition:background .2s ease;
+}
+.pill-link:hover {
+  background:#f1f5f9;
+}

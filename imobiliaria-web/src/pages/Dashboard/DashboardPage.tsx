@@ -1,7 +1,5 @@
-// pages/DashboardPage.tsx
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import "./dashboard.css";
 
 type PageResp<T> =
   | { content: T[]; totalElements: number; totalPages: number; number: number; size: number }
@@ -58,9 +56,184 @@ export default function DashboardPage() {
     .mock-tip:hover::after{ opacity:1 }
   `;
 
+  // CSS principal (embutido — igual ao dashboard.css)
+  const mainCss = `
+:root{
+  --bg:#f5f7fb;
+  --text:#0f172a;
+  --muted:#64748b;
+  --card:#ffffff;
+  --brand:#0B1321;
+  --border:#e2e8f0;
+  --shadow:0 14px 40px rgba(2,6,23,.08);
+}
+
+/* ===== UTIL ===== */
+.small{ font-size:12.5px }
+.muted{ color:#64748b }
+.text{ font-size:15px; line-height:1.35 }
+.link{ color:var(--brand); text-decoration:none; font-weight:700 }
+.link:hover{ filter:brightness(.95) }
+.icon-btn{ background:none; border:0; cursor:pointer; border-radius:10px; padding:8px; color:#0f172a }
+.icon-btn:hover{ background:#f1f5f9 }
+
+/* ===== KPIs ===== */
+.kpi-grid{
+  display:grid;
+  grid-template-columns:repeat(1, minmax(0,1fr));
+  gap:16px;
+}
+@media (min-width: 780px){
+  .kpi-grid{ grid-template-columns:repeat(2, minmax(0,1fr)) }
+}
+@media (min-width: 1120px){
+  .kpi-grid{ grid-template-columns:repeat(4, minmax(0,1fr)) }
+}
+
+.kpi-card{
+  background:var(--card);
+  border:1px solid rgba(2,6,23,.06);
+  border-radius:22px;
+  box-shadow:var(--shadow);
+  padding:18px 18px 14px;
+}
+.kpi-head{
+  display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+}
+.kpi-label{
+  margin:0 0 6px 0;
+  font-size:13px; letter-spacing:.02em; color:#475569; text-transform:uppercase; font-weight:800;
+}
+.kpi-value{
+  margin:0;
+  font-size:32px; font-weight:900; letter-spacing:-.01em; color:#0f172a;
+}
+.kpi-sub{
+  margin:10px 0 0 0; font-size:12.5px; color:#64748b;
+}
+
+/* Chips */
+.chip{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 10px; border-radius:999px; font-weight:800; font-size:12.5px;
+  border:1px solid var(--border); background:#f8fafc; color:#0f172a;
+}
+.chip-slate{ background:#0f172a; color:#fff; border-color:transparent }
+
+/* ===== GRID PRINCIPAL ===== */
+.grid-3{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:16px;
+}
+@media (min-width: 980px){
+  .grid-3{ grid-template-columns:1fr 1fr 1fr }
+  .lg-span-2{ grid-column: span 2 / span 2 }
+}
+
+/* ===== CARD ===== */
+.card{
+  background:var(--card);
+  border:1px solid rgba(2,6,23,.06);
+  border-radius:22px;
+  box-shadow:var(--shadow);
+  padding:16px;
+}
+.card-head-row{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  margin:4px 0 14px 0;
+}
+.card-title{
+  margin:0; font-size:18px; font-weight:800; color:#0f172a;
+}
+
+/* ===== CHART PLACEHOLDER ===== */
+.chart-placeholder{
+  position:relative;
+  height:260px;
+  border:1px dashed #d3d9e3;
+  border-radius:14px;
+  background:#f8fafc;
+  display:grid; place-items:center;
+  overflow:hidden;
+}
+.chart-grid{
+  position:absolute; inset:0;
+  background-image:
+    linear-gradient(to right, rgba(2,6,23,.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(2,6,23,.05) 1px, transparent 1px);
+  background-size:40px 40px;
+}
+.footnote{ margin:10px 2px 0; color:#94a3b8; font-size:12px }
+
+/* ===== TABELA DOCUMENTOS ===== */
+.table-wrap{ overflow:auto }
+.table{
+  width:100%;
+  border-collapse:separate; border-spacing:0;
+}
+.table thead th{
+  text-align:left; background:#f8fafc; color:#475569;
+  font-size:12.5px; letter-spacing:.03em; padding:12px 16px;
+  border-bottom:1px solid var(--border);
+}
+.table tbody td{
+  padding:12px 16px; border-bottom:1px solid #eef2f7; font-size:15px; color:#0f172a;
+}
+.table tbody tr:hover{ background:#fafafa }
+.actions{ display:flex; gap:8px; justify-content:flex-start }
+.actions .icon-btn{ padding:6px }
+
+/* ===== AÇÕES RÁPIDAS ===== */
+.quick-grid{
+  display:grid; grid-template-columns:1fr; gap:10px;
+}
+@media (min-width: 520px){
+  .quick-grid{ grid-template-columns:1fr 1fr }
+}
+.quick-link{
+  display:flex; align-items:center; gap:10px;
+  background:#f8fafc; border:1px solid var(--border); border-radius:14px;
+  padding:12px 14px; font-weight:800; color:#0f172a; text-decoration:none;
+}
+.quick-link:hover{ filter:brightness(.98) }
+.quick-ic{ width:24px; height:24px; display:inline-grid; place-items:center }
+
+/* ===== ATIVIDADE ===== */
+.activity{
+  list-style:none; margin:0; padding:0; display:grid; gap:10px;
+}
+.activity-item{
+  display:flex; align-items:flex-start; gap:10px; padding:8px 2px;
+}
+.act-badge{
+  display:inline-grid; place-items:center;
+  width:28px; height:28px; border-radius:8px; font-size:14px;
+  border:1px solid var(--border); background:#fff;
+}
+.act-badge.brand{ background:#0B1321; color:#fff; border-color:transparent }
+.act-badge.emerald{ background:#10b981; color:#fff; border-color:transparent }
+.act-badge.orange{ background:#f97316; color:#fff; border-color:transparent }
+
+/* ===== DIÁRIO ===== */
+.diary{
+  list-style:none; margin:0; padding:0; display:grid; gap:10px;
+}
+.diary-item{
+  border:1px solid var(--border); background:#fff; border-radius:14px;
+  padding:12px 14px;
+}
+.diary-item .row{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+}
+.diary-item .label{ font-weight:800; color:#0f172a }
+`;
+
+  const styles = `${tipCss}\n${mainCss}`;
+
   return (
     <>
-      <style>{tipCss}</style>
+      <style>{styles}</style>
 
       {/* KPIs */}
       <section className="kpi-grid">
@@ -68,7 +241,9 @@ export default function DashboardPage() {
           <div className="kpi-head">
             <div>
               <p className="kpi-label">Proprietários</p>
-              <p className="kpi-value">{ownersCount ?? <span className="mock-tip" data-tip="dado mockado">0</span>}</p>
+              <p className="kpi-value">
+                {ownersCount ?? <span className="mock-tip" data-tip="dado mockado">0</span>}
+              </p>
             </div>
             {/* crescimento ainda não calculado na API */}
             <span className="chip chip-slate mock-tip" data-tip="dado mockado">+3</span>
@@ -80,7 +255,9 @@ export default function DashboardPage() {
           <div className="kpi-head">
             <div>
               <p className="kpi-label">Imóveis</p>
-              <p className="kpi-value">{imoveisCount ?? <span className="mock-tip" data-tip="dado mockado">0</span>}</p>
+              <p className="kpi-value">
+                {imoveisCount ?? <span className="mock-tip" data-tip="dado mockado">0</span>}
+              </p>
             </div>
             {/* ocupação ainda não disponível */}
             <span className="chip chip-slate mock-tip" data-tip="dado mockado">75% ocup.</span>

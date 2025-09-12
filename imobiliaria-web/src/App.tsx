@@ -6,11 +6,14 @@ import { AuthContext } from "./providers/AuthProvider";
 import ErrorBoundary from "./components/ErrorBoundary";
 import SidebarLayout from "./components/layout/SidebarLayout";
 
-import LoginPage from "./pages/Login/LoginPage";
-import RegisterPage from "./pages/Register/RegisterPage";
+// Páginas
+import LoginPage from "./pages/Auth/LoginPage";
+import RegisterPage from "./pages/Auth/RegisterPage";
 import DashboardPage from "./pages/Dashboard/DashboardPage";
 import ProprietariosPage from "./pages/Proprietarios/ProprietariosPage";
-import { ImovelDetalheView } from "./pages/Proprietarios/ImoveisPage"; // ⬅️ export nomeado
+
+// Nova estrutura: o wrapper que decide Lista x Detalhe de Imóveis
+import ImoveisPage from "./pages/Proprietarios/Imoveis/ImoveisPage.tsx";
 
 function Private({ children }: { children: React.ReactNode }) {
   const ctx = useContext(AuthContext);
@@ -25,9 +28,11 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
+          {/* Público */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
+          {/* Dashboard */}
           <Route
             path="/dashboard"
             element={
@@ -39,7 +44,7 @@ export default function App() {
             }
           />
 
-          {/* Lista de proprietários */}
+          {/* Proprietários (lista) */}
           <Route
             path="/proprietarios"
             element={
@@ -51,7 +56,7 @@ export default function App() {
             }
           />
 
-          {/* Detalhe do proprietário (slug) */}
+          {/* Detalhe do proprietário (usa a própria ProprietariosPage para decidir a aba) */}
           <Route
             path="/proprietarios/:slug"
             element={
@@ -63,25 +68,23 @@ export default function App() {
             }
           />
 
-          {/* Aba Imóveis do proprietário — a própria ProprietariosPage decide renderizar ImoveisPage internamente */}
+          {/* Imóveis do proprietário (wrapper decide: lista x detalhe) */}
           <Route
             path="/proprietarios/:slug/imoveis"
             element={
               <Private>
                 <SidebarLayout>
-                  <ProprietariosPage />
+                  <ImoveisPage />
                 </SidebarLayout>
               </Private>
             }
           />
-
-          {/* Detalhe do imóvel + abas internas */}
           <Route
             path="/proprietarios/:slug/imoveis/:imovelId"
             element={
               <Private>
                 <SidebarLayout>
-                  <ImovelDetalheView />
+                  <ImoveisPage />
                 </SidebarLayout>
               </Private>
             }
@@ -91,7 +94,7 @@ export default function App() {
             element={
               <Private>
                 <SidebarLayout>
-                  <ImovelDetalheView />
+                  <ImoveisPage />
                 </SidebarLayout>
               </Private>
             }
@@ -101,13 +104,13 @@ export default function App() {
             element={
               <Private>
                 <SidebarLayout>
-                  <ImovelDetalheView />
+                  <ImoveisPage />
                 </SidebarLayout>
               </Private>
             }
           />
 
-          {/* Outras páginas */}
+          {/* Outras rotas simples (placeholders) */}
           <Route
             path="/alertas"
             element={
@@ -129,6 +132,7 @@ export default function App() {
             }
           />
 
+          {/* 404 */}
           <Route path="*" element={<div style={{ padding: 24 }}>404</div>} />
         </Routes>
       </BrowserRouter>

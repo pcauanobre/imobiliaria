@@ -1,8 +1,8 @@
 // src/app/routes.tsx
 import { useEffect, useState } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
-import LoginPage from "../pages/Login/LoginPage";
-import RegisterPage from "../pages/Register/RegisterPage";
+import LoginPage from "../pages/Auth/LoginPage";
+import RegisterPage from "../pages/Auth/RegisterPage";
 import DashboardPage from "../pages/Dashboard/DashboardPage";
 import { useAuth } from "../hooks/useAuth";
 
