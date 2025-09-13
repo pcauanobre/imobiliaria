@@ -1,0 +1,50 @@
+:root{
+  --brand:#0B1321; --text:#0f172a; --muted:#64748b;
+  --card:#fff; --border:#e2e8f0;
+}
+
+/* Botões padronizados */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  font-weight:700; font-size:14px; line-height:1;
+  padding:10px 18px; border-radius:12px; border:1px solid var(--border);
+  background:#f8fafc; color:var(--text); cursor:pointer;
+  transition:filter .2s ease, background .2s ease, transform .02s ease;
+}
+.btn:hover{ filter:brightness(.98) }
+.btn:active{ transform:translateY(0.5px) }
+.btn--primary{ background:var(--brand); color:#fff; border-color:transparent; box-shadow:0 8px 26px rgba(11,19,33,.12) }
+.btn--lg{ padding:12px 20px; font-size:15px; border-radius:14px }
+
+/* Card principal (altura padrão) */
+.main-card{ min-height: 660px; }
+
+/* Abas de modais e conteúdo com altura fixa (não “pula”) */
+.modal-tabs{ display:flex; gap:10px; margin:0 0 12px }
+.modal-tab{
+  background:#fff; border:1px solid var(--border); color:#475569;
+  border-radius:999px; padding:8px 14px; font-weight:600; font-size:14px; cursor:pointer;
+}
+.modal-tab.active{ background:var(--brand); color:#fff; border-color:var(--brand) }
+.modal-content{ min-height:520px; max-height:60vh; overflow:auto; }
+
+/* Badge vermelha (lista / inputs vazios) */
+.badge-dot{
+  position:absolute; top:-6px; right:-6px; width:14px; height:14px;
+  background:#ef4444; border-radius:999px; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.06);
+}
+
+/* “piscada” de destaque */
+@keyframes highlight {
+  0% { box-shadow:0 0 0 0 rgba(239,68,68,.7); border-color:#ef4444; }
+  50% { box-shadow:0 0 0 5px rgba(239,68,68,.25); border-color:#ef4444; }
+  100% { box-shadow:0 0 0 0 rgba(239,68,68,0); }
+}
+.flash { animation: highlight 1s ease 2; }
+
+/* Badge na pill da lista */
+.pill-with-dot{ position:relative; display:inline-block }
+.pill-with-dot .pill-dot{
+  position:absolute; top:-6px; right:-6px; width:14px; height:14px; background:#ef4444;
+  border-radius:999px; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.06);
+}

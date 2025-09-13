@@ -8,8 +8,8 @@
 
   export type Proprietario = {
     id?: number;
-    nome: string;
-    doc: string;
+    nome: string | null;
+    doc: string | null;
     email?: string | null;
     tel?: string | null;
     obs?: string | null;

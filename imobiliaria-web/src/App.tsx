@@ -2,7 +2,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useContext } from "react";
 import { AuthContext } from "./providers/AuthProvider";
-
+import "./styles/ui.css";
 import ErrorBoundary from "./components/ErrorBoundary";
 import SidebarLayout from "./components/layout/SidebarLayout";
 
