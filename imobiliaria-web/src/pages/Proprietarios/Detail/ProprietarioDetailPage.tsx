@@ -1,10 +1,10 @@
-// src/pages/Proprietarios/Detail/ProprietarioDetailPage.tsx
-import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
-// ✅ IMPORTS (caminho correto é ./components/...)
 import EditProprietarioModal from "./components/EditProprietarioModal";
 import MissingInfoDialog from "./components/MissingInfoDialog";
+import DadosTab from "./tabs/DadosTab";
+import DocumentosTab from "./tabs/DocumentosTab";
 
 type Proprietario = {
   id: number;
@@ -13,6 +13,11 @@ type Proprietario = {
   email: string | null;
   tel: string | null;
   obs: string | null;
+
+  // Extras opcionais (quando existir no front/back)
+  endereco?: string | null;
+  estadoCivil?: string | null;
+  ocupacao?: string | null;
 };
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
@@ -22,7 +27,7 @@ async function getProprietario(id: number): Promise<Proprietario> {
   if (!r.ok) throw new Error("Erro ao buscar proprietário");
   const dto = await r.json();
 
-  // 🔧 normaliza possíveis aliases vindos do backend
+  // Normalização + passa extras se existirem
   return {
     id: Number(dto.id),
     nome: dto.nome ?? dto.name ?? null,
@@ -30,6 +35,11 @@ async function getProprietario(id: number): Promise<Proprietario> {
     email: dto.email ?? null,
     tel: dto.tel ?? dto.telefone ?? null,
     obs: dto.obs ?? dto.observacoes ?? null,
+
+    // os seguintes podem não existir — mantemos se vierem
+    endereco: dto.endereco ?? null,
+    estadoCivil: dto.estadoCivil ?? null,
+    ocupacao: dto.ocupacao ?? null,
   };
 }
 
@@ -47,10 +57,16 @@ const css = `
 .btn:hover{ filter:brightness(.98) }
 .btn.primary{ background:#0B1321; color:#fff; border-color:transparent }
 .tabbar{ display:flex; gap:8px; padding:12px 18px 18px; border-bottom:1px solid #e2e8f0 }
-.tab{ border:1px solid #e2e8f0; background:#fff; border-radius:999px; padding:8px 14px; font-weight:600; font-size:14px; color:#475569; text-decoration:none }
+.tab{ border:1px solid #e2e8f0; background:#fff; border-radius:999px; padding:8px 14px; font-weight:600; font-size:14px; color:#475569; text-decoration:none; cursor:pointer; display:inline-flex; align-items:center }
 .tab:hover{ background:#f1f5f9 }
 .tab.active{ background:#0B1321; color:#fff; border-color:#0B1321 }
-.grid{ padding:20px; display:grid; grid-template-columns:1fr 1fr; gap:14px }
+
+/* NOVO: padding único para todas as abas */
+.tabcontent{ padding:20px }
+
+/* A grid interna não precisa mais de padding próprio */
+.grid{ padding:0; display:grid; grid-template-columns:1fr 1fr; gap:14px }
+
 .k{ font-size:12px; color:#64748b; margin-bottom:6px }
 .v{ font-size:15px; }
 .full{ grid-column:1 / -1 }
@@ -58,7 +74,7 @@ const css = `
 .breadcrumb a{ color:inherit; text-decoration:none }
 .breadcrumb-active{ font-weight:700; color:#0B1321 }
 
-/* ⚠️ Ícone do alerta */
+/* Ícone de alerta */
 .warn-icon{
   width:34px;height:34px;border-radius:8px;border:1px solid #fee2e2;background:#fff5f5;color:#ef4444;
   display:inline-flex;align-items:center;justify-content:center;cursor:pointer
@@ -69,6 +85,13 @@ const css = `
 export default function ProprietarioDetailPage() {
   const { slug } = useParams();
   const nav = useNavigate();
+  const { pathname } = useLocation();
+
+  // URL-driven tabs
+  const isDocs = pathname.endsWith("/docs"); // /proprietarios/:slug/docs
+  const base = `/proprietarios/${slug}`;
+  const docsHref = `${base}/docs`;
+  const imoveisHref = `${base}/imoveis`;
 
   // extrai id do slug "qualquer-coisa-123"
   const ownerId = useMemo(() => {
@@ -78,13 +101,31 @@ export default function ProprietarioDetailPage() {
   }, [slug]);
 
   const [owner, setOwner] = useState<Proprietario | null>(null);
-  const [,setLoading] = useState(false);
+  const [, setLoading] = useState(false);
 
   // popups
   const [editOpen, setEditOpen] = useState(false);
   const [missingOpen, setMissingOpen] = useState(false);
   const [focusField, setFocusField] =
     useState<"nome" | "doc" | "email" | "tel" | "obs" | undefined>(undefined);
+
+  // botão "Anexar" injetado pela aba Documentos
+  const [headerDocBtn, setHeaderDocBtn] = useState<{
+    openPicker: (() => void) | null;
+    uploading: boolean;
+  }>({ openPicker: null, uploading: false });
+
+  // callbacks MEMOIZADOS
+  const attachHeader = useCallback(
+    (openPicker: () => void, uploading: boolean) => {
+      setHeaderDocBtn({ openPicker, uploading });
+    },
+    []
+  );
+
+  const handleDocTabLeave = useCallback(() => {
+    setHeaderDocBtn({ openPicker: null, uploading: false });
+  }, []);
 
   useEffect(() => {
     if (!ownerId) return;
@@ -102,7 +143,7 @@ export default function ProprietarioDetailPage() {
     })();
   }, [ownerId]);
 
-  // lista de faltantes (robusta a null/undefined/"")
+  // faltantes
   const faltando = useMemo(() => {
     const miss: Array<"nome" | "doc" | "email" | "tel" | "obs"> = [];
     const empty = (v: unknown) => {
@@ -119,8 +160,7 @@ export default function ProprietarioDetailPage() {
     return miss;
   }, [owner]);
 
-  const base = `/proprietarios/${slug}`;
-  const imoveisHref = `${base}/imoveis`;
+  const tabClass = (active: boolean) => `tab ${active ? "active" : ""}`;
 
   return (
     <div className="page">
@@ -136,7 +176,10 @@ export default function ProprietarioDetailPage() {
         <div className="cardhead">
           <div>
             <div className="backline">
-              <button className="backbtn" onClick={() => nav("/proprietarios", { replace: true })}>
+              <button
+                className="backbtn"
+                onClick={() => nav("/proprietarios", { replace: true })}
+              >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path d="M15 19l-7-7 7-7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -146,8 +189,12 @@ export default function ProprietarioDetailPage() {
 
             <h2 className="h1">
               {owner?.nome ?? "…"}
-              {faltando.length > 0 && (
-                <button className="warn-icon" title="Dados incompletos" onClick={() => setMissingOpen(true)}>
+              {faltando.length > 0 && !isDocs && (
+                <button
+                  className="warn-icon"
+                  title="Dados incompletos"
+                  onClick={() => setMissingOpen(true)}
+                >
                   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor">
                     <path d="M12 3l9 16H3L12 3z" strokeWidth="2" />
                     <line x1="12" y1="9" x2="12" y2="13" strokeWidth="2" />
@@ -159,49 +206,70 @@ export default function ProprietarioDetailPage() {
             <p className="sub">{owner?.doc ? owner.doc : "Sem documento"}</p>
           </div>
 
+          {/* Toolbar (sem alteração além do CSS global) */}
           <div className="toolbar">
-            {faltando.length > 0 && (
-              <button className="btn" onClick={() => setMissingOpen(true)}>Completar dados</button>
+            {!isDocs && faltando.length > 0 && (
+              <button className="btn" onClick={() => setMissingOpen(true)}>
+                Completar dados
+              </button>
             )}
-            <button className="btn primary" onClick={() => setEditOpen(true)}>Editar</button>
+            {!isDocs && (
+              <button className="btn primary" onClick={() => setEditOpen(true)}>
+                Editar
+              </button>
+            )}
+
+            {isDocs && (
+              <button
+                className="btn primary"
+                onClick={() => headerDocBtn.openPicker?.()}
+                disabled={headerDocBtn.uploading || !headerDocBtn.openPicker}
+                title="Anexar documentos"
+              >
+                {headerDocBtn.uploading ? "Anexando…" : "Anexar"}
+              </button>
+            )}
           </div>
         </div>
 
+        {/* Abas (por URL) */}
         <div className="tabbar">
-          <span className="tab active">Dados</span>
-          <span className="tab">Documentos</span>
-          <Link to={imoveisHref} className="tab">Imóveis</Link>
+          <Link className={tabClass(!isDocs)} to={base}>
+            Dados
+          </Link>
+          <Link className={tabClass(isDocs)} to={docsHref}>
+            Documentos
+          </Link>
+          <Link className="tab" to={imoveisHref}>
+            Imóveis
+          </Link>
         </div>
 
-        <div className="grid">
-          <div>
-            <div className="k">NOME</div>
-            <div className="v">{owner?.nome ?? "-"}</div>
+        {/* Conteúdo das abas (apenas embrulhado com .tabcontent) */}
+        {!isDocs && owner && (
+          <div className="tabcontent">
+            <DadosTab owner={owner} />
           </div>
-          <div>
-            <div className="k">CPF/CNPJ</div>
-            <div className="v">{owner?.doc ?? "-"}</div>
+        )}
+
+        {isDocs && owner && (
+          <div className="tabcontent">
+            <DocumentosTab
+              ownerId={owner.id}
+              onLeave={handleDocTabLeave}
+            />
           </div>
-          <div>
-            <div className="k">E-MAIL</div>
-            <div className="v">{owner?.email ?? "-"}</div>
-          </div>
-          <div>
-            <div className="k">TELEFONE</div>
-            <div className="v">{owner?.tel ?? "-"}</div>
-          </div>
-          <div className="full">
-            <div className="k">OBSERVAÇÕES</div>
-            <div className="v">{owner?.obs ?? "-"}</div>
-          </div>
-        </div>
+        )}
       </section>
 
       {/* Popup: editar */}
       {owner && (
         <EditProprietarioModal
           open={editOpen}
-          onClose={() => { setEditOpen(false); setFocusField(undefined); }}
+          onClose={() => {
+            setEditOpen(false);
+            setFocusField(undefined);
+          }}
           owner={owner}
           initialFocusField={focusField}
           onSaved={async () => {
@@ -221,7 +289,7 @@ export default function ProprietarioDetailPage() {
         onClose={() => setMissingOpen(false)}
         onGoTo={(field) => {
           setMissingOpen(false);
-          setFocusField(field); // 👉 o modal vai focar e "piscar" esse campo
+          setFocusField(field);
           setEditOpen(true);
         }}
       />

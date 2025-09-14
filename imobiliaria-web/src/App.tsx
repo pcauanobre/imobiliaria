@@ -1,4 +1,3 @@
-// App.tsx
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useContext } from "react";
 import { AuthContext } from "./providers/AuthProvider";
@@ -13,7 +12,7 @@ import DashboardPage from "./pages/Dashboard/DashboardPage";
 import ProprietariosPage from "./pages/Proprietarios/ProprietariosPage";
 
 // Nova estrutura: o wrapper que decide Lista x Detalhe de Imóveis
-import ImoveisPage from "./pages/Proprietarios/Imoveis/ImoveisPage.tsx";
+import ImoveisPage from "./pages/Proprietarios/Imoveis/ImoveisPage";
 
 function Private({ children }: { children: React.ReactNode }) {
   const ctx = useContext(AuthContext);
@@ -56,7 +55,7 @@ export default function App() {
             }
           />
 
-          {/* Detalhe do proprietário (usa a própria ProprietariosPage para decidir a aba) */}
+          {/* Detalhe do proprietário (Dados) */}
           <Route
             path="/proprietarios/:slug"
             element={
@@ -68,7 +67,19 @@ export default function App() {
             }
           />
 
-          {/* Imóveis do proprietário (wrapper decide: lista x detalhe) */}
+          {/* Detalhe do proprietário (Documentos) - mesma página, outra rota */}
+          <Route
+            path="/proprietarios/:slug/docs"
+            element={
+              <Private>
+                <SidebarLayout>
+                  <ProprietariosPage />
+                </SidebarLayout>
+              </Private>
+            }
+          />
+
+          {/* Imóveis do proprietário (lista/detalhe/docs/fotos) — roteados fora do wrapper de proprietários */}
           <Route
             path="/proprietarios/:slug/imoveis"
             element={

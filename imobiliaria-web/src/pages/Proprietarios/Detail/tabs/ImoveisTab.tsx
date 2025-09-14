@@ -1,4 +1,3 @@
-// src/pages/Proprietarios/Detail/tabs/ImoveisTab.tsx
 import { Link, useParams } from "react-router-dom";
 
 /* CSS para o estilo pill + tabela */
@@ -52,7 +51,7 @@ export default function ImoveisTab({ items }: Props) {
   const { slug } = useParams(); // usado para montar a rota do detalhe
 
   return (
-    <div>
+    <div className="tabcontent">
       <style>{css}</style>
       <div style={{ overflow: "auto" }}>
         <table className="table">
@@ -75,7 +74,6 @@ export default function ImoveisTab({ items }: Props) {
               items.map((r) => (
                 <tr key={r.id}>
                   <td>
-                    {/* pill clicável para abrir detalhe do imóvel */}
                     <Link
                       to={`/proprietarios/${slug}/imoveis/${r.id}`}
                       className="pill-link"

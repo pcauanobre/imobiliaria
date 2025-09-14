@@ -1,3 +1,4 @@
+// src/pages/Proprietarios/OwnerImoveisListPage.tsx
 // Lista de imóveis de um proprietário (sem fallback ?ownerId=)
 
 import { useEffect, useMemo, useState } from "react";
@@ -7,15 +8,15 @@ import ConfirmDeleteDialog from "../Detail/components/ConfirmDeleteDialog";
 import SuccessDialog from "../Detail/components/SuccessDialog";
 
 /* ============================================================
-   CSS — mesmo look&feel utilizado nas telas
+   CSS — mesmo look&feel utilizado nas telas (ESCOPO .oip)
    ============================================================ */
 const css = `
-:root{
+.oip{
   --bg:#f5f7fb; --card:#fff; --text:#0f172a; --muted:#64748b; --brand:#0B1321;
   --border:#e2e8f0; --ring:0 0 0 3px rgba(11,19,33,.22); --shadow:0 14px 40px rgba(2,6,23,.08);
 }
 .page{ padding:24px }
-.header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px }
+.header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:0 } /* alinhar topo como nas outras abas */
 .breadcrumb{ color:var(--muted); font-size:14px; margin-bottom:24px }
 .breadcrumb a{ color:inherit; text-decoration:none }
 .breadcrumb-active{ font-weight:700; color:var(--brand) }
@@ -28,6 +29,14 @@ const css = `
 .cardhead h2{ margin:0 0 2px; font-size:20px }
 .cardhead p{ margin:0; color:var(--muted); font-size:13.5px }
 
+.tabbar{ display:flex; gap:8px; padding:12px 18px 18px; border-bottom:1px solid var(--border) }
+.tab{ border:1px solid #e2e8f0; background:#fff; border-radius:999px; padding:8px 14px; font-weight:600; font-size:14px; color:#475569; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center }
+.tab:hover{ background:#f1f5f9 }
+.tab.active{ background:var(--brand); border-color:var(--brand); color:#fff }
+
+/* padding padrão de conteúdo pós-tab (igual às outras páginas) */
+.tabcontent{ padding:12px 18px }
+
 .tablewrap{ overflow:auto }
 .table{ width:100%; border-collapse:separate; border-spacing:0 }
 .table thead th{ background:#f8fafc; text-align:left; font-size:12.5px; letter-spacing:.03em; color:#475569; padding:12px 16px; border-bottom:1px solid var(--border) }
@@ -37,11 +46,6 @@ const css = `
 .rowact{ display:flex; gap:8px; justify-content:center }
 .iconbtn{ border:0; background:transparent; padding:8px; border-radius:12px; cursor:pointer; text-decoration:none; color:inherit }
 .iconbtn:hover{ background:#f1f5f9 }
-
-.tabbar{ display:flex; gap:8px; padding:12px 18px 18px; border-bottom:1px solid var(--border) }
-.tab{ border:1px solid #e2e8f0; background:#fff; border-radius:999px; padding:8px 14px; font-weight:600; font-size:14px; color:#475569; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center }
-.tab:hover{ background:#f1f5f9 }
-.tab.active{ background:var(--brand); border-color:var(--brand); color:#fff }
 
 .backline{ margin-top:10px; margin-bottom:18px }
 .backbtn{ display:inline-flex; align-items:center; gap:8px; font-weight:800; color:var(--text);
@@ -192,11 +196,12 @@ export default function OwnerImoveisListPage() {
     );
   }, [imoveis, q]);
 
-  const dadosHref = `/proprietarios/${slug}`;
+  const dadosHref   = `/proprietarios/${slug}`;
+  const docsHref    = `/proprietarios/${slug}/docs`;   // ✅ aba Documentos correta
   const imoveisHref = `/proprietarios/${slug}/imoveis`;
 
   return (
-    <div className="page">
+    <div className="page oip">
       <style>{css}</style>
 
       <div className="header">
@@ -240,11 +245,11 @@ export default function OwnerImoveisListPage() {
 
         <div className="tabbar">
           <Link to={dadosHref} className="tab">Dados</Link>
-          <span className="tab">Documentos</span>
+          <Link to={docsHref} className="tab">Documentos</Link>
           <Link to={imoveisHref} className="tab active">Imóveis</Link>
         </div>
 
-        <div style={{ padding: "12px 18px" }}>
+        <div className="tabcontent">
           <input
             className="input"
             placeholder="Buscar por endereço, tipo ou situação"
